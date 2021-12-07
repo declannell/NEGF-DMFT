@@ -1,0 +1,266 @@
+import scipy.linalg as la
+import matplotlib.pyplot as plt
+import numpy as np
+import math
+from dataclasses import dataclass
+import time
+
+
+
+class HubbardHamiltonian: 
+    onsite: float
+    gamma: float
+    hopping: float
+    hubbard_interaction: float
+    chain_length: int
+    matrix: None
+    effective_matrix=None
+    self_energy_left=None
+    self_energy_right=None
+
+
+    
+    def __init__(self, parameters  ):
+        self.onsite , self.hopping , self.chain_length , self.gamma , self.hubbard_interaction = parameters.onsite , parameters.hopping , parameters.chain_length , parameters.gamma , parameters.hubbard_interaction
+        self.matrix=create_matrix(self.chain_length)
+        self.efffective_matrix=create_matrix(self.chain_length)
+        self.self_energy_left=create_matrix(self.chain_length)
+        self.self_energy_right=create_matrix(self.chain_length)
+
+        for i in range(0,self.chain_length):
+                self.matrix[i][i]=self.onsite
+
+            
+        for i in range(0,self.chain_length-1):
+            self.matrix[i][i+1]=self.hopping
+            self.matrix[i+1][i]=self.hopping   
+                            
+        self.self_energy_right[-1][-1] = -1j * self.gamma      
+        self.self_energy_left[0][0]= -1j * self.gamma
+        
+        for i in range(0,self.chain_length):
+            for j in range(0,self.chain_length):  
+                self.efffective_matrix[i][j]=self.matrix[i][j]+self.self_energy_right[i][j]+self.self_energy_left[i][j]
+    
+    def print(self):
+        for i in range(0,self.chain_length):
+            row_string = " ".join((str(r).rjust(5, " ") for r in self.efffective_matrix[i])) #rjust adds padding, join connects them all
+            print(row_string)
+
+@dataclass #creates init function for me
+class Parameters:
+    onsite: float
+    gamma: float
+    hopping: float
+    chain_length: int
+    chemical_potential: float
+    temperature: float
+    steps: float
+    e_upper_bound: float
+    e_lower_bound: float
+    hubbard_interaction: float
+
+
+def fermi_function(energy, parameters):
+    if(parameters.temperature==0):
+        if(energy < parameters.chemical_potential):
+            return 1
+        else:
+            return 0
+    else:
+        return 1/(1+math.exp((energy-parameters.chemical_potential)/parameters.temperature))
+    
+def integrating_function(pdos, energy, parameters):
+    delta_energy = (parameters.e_upper_bound-parameters.e_lower_bound)/parameters.steps
+    result=0
+    for r in range(0,parameters.steps):
+        result=delta_energy * fermi_function(energy[r], parameters) * pdos[r] +result#pdos=PDOS
+    
+    return result
+
+def integrate( parameters,   gf_1, gf_2, gf_3, r):# in this function, the green functions are 1d arrays in energy. this is becasue we have passed the diagonal component of the green fun( lesser, or retarded) 
+    delta_energy = (parameters.e_upper_bound-parameters.e_lower_bound)/parameters.steps
+    result=0
+        #if i=0, j=0 this corresponds the begining of the energy array, so energies of -20, -20. this means our third green function has an energy of -40 + E[r]. We approximated earlier that
+        #the green function is zero outside (-20,20) so E(r)=20 for the integral to be non-zero and hence r=steps. So i+j+r has a minimum value of steps. By a similiar logic, it has a max value of 2*steps.
+        # for the range inbetween the index of the third green function is (i+j+r) % steps
+
+    for i in range(0,parameters.steps):
+        for j in range(0,parameters.steps):
+            if ( ( (i+j+r) >= parameters.steps ) and ( (i+j+j) <= 2*parameters.steps) ):
+                
+                result=(delta_energy/(2*np.pi))**2 * gf_1[i] * gf_2[j] * gf_3[ (i+j+r)%parameters.steps ] +result
+
+            else:
+                result=result
+                
+    return result
+
+def green_lesser_calculator( parameters , green_function, energy):
+    g_lesser=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)]  
+    
+    for r in range(0, parameters.steps):
+        for i in range(0, parameters.chain_length):
+            for j in range(0, parameters.chain_length):
+                g_lesser[r][i][j]= -2j*fermi_function( energy[r], parameters)*(green_function[r][i][j]-np.conjugate(green_function[r][j][i]))  
+    return g_lesser
+
+def self_energy_calculator(parameters, g_0_up, g_0_down, energy):# this creates the entire energy array at once
+    self_energy=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
+    g_lesser_up=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)]  
+    g_lesser_down=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)]    
+    
+
+    g_lesser_up=green_lesser_calculator(parameters,  g_0_up, energy )    
+    g_lesser_down=green_lesser_calculator(parameters,  g_0_down, energy )
+ 
+
+    for r in range(0,parameters.steps):# the are calculating the self energy sigma_{ii}(E) for each discretized energy. To do this we pass the green_fun_{ii} for all energies as we need to integrate over all energies in the integrate function
+        for i in range(0, parameters.chain_length):
+            self_energy[r][i][i]=  parameters.hubbard_interaction**2*( integrate( parameters, [ e[i][i] for e in g_0_up] , [ e[i][i] for e in g_0_down]  , [ e[i][i] for e in g_lesser_down]   , r )  )
+            self_energy[r][i][i]+= parameters.hubbard_interaction**2*( integrate( parameters, [ e[i][i] for e in g_0_up] , [ e[i][i] for e in g_lesser_down] , [ e[i][i] for e in g_lesser_down]  ,r  ) ) 
+            self_energy[r][i][i]+= parameters.hubbard_interaction**2*( integrate( parameters, [ e[i][i] for e in g_lesser_up] , [ e[i][i] for e in g_0_down] , [ e[i][i] for e in g_lesser_down]  ,r  ) ) 
+            self_energy[r][i][i]+= parameters.hubbard_interaction**2*( integrate( parameters, [ e[i][i] for e in g_lesser_up] , [ e[i][i] for e in g_lesser_down]  , [np.conjugate( e[i][i]) for e in g_0_down]  ,r  ) ) #fix advanced green function
+
+    return self_energy
+
+def spectral_function_calculator( green_function , parameters):
+    spectral_function=create_matrix(parameters.chain_length)
+    for i in range(0,parameters.chain_length):
+        for j in range(0,parameters.chain_length):
+            spectral_function[i][j]=1j*(green_function[i][j]-np.conjugate(green_function[j][i]))  
+    return spectral_function
+  
+    
+
+def create_matrix(size):
+    return [[0.0 for x in range(size)] for y in range(size)]
+          
+def green_function_calculator( hamiltonian , self_energy , parameters, energy):
+    inverse_green_function=create_matrix(parameters.chain_length)
+    for i in range(0,parameters.chain_length):
+           for j in range(0,parameters.chain_length): 
+               if(i==j):                
+                   inverse_green_function[i][j]=-hamiltonian.efffective_matrix[i][j]-self_energy[i][j] +energy
+               else:
+                   inverse_green_function[i][j]=-hamiltonian.efffective_matrix[i][j]
+        #print(inverse_green_function[i])
+    #hamiltonian.print()
+    
+    return la.inv(inverse_green_function, overwrite_a=False, check_finite=True)    
+    
+
+def get_spin_occupation(spectral_function, energy, parameters):
+    
+    x= 1/(2*np.pi)*integrating_function( spectral_function ,energy, parameters) 
+    return x, 1-x
+
+def get_self_consistent_green_function(parameters, energy):
+    green_function_up=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
+    green_function_down=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)]
+    spectral_function_up=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
+    spectral_function_down=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)]
+    self_energy_up=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
+    self_energy_down=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
+
+    spin_up_occup , spin_down_occup = [ 0.0 for x in range(0, parameters.chain_length)] , [ 0.0 for x in range(0, parameters.chain_length)]
+
+    hamiltonian_up=HubbardHamiltonian(parameters)
+    hamiltonian_down=HubbardHamiltonian(parameters)
+   
+    n=parameters.chain_length**2*parameters.steps
+    differencelist=[0 for i in range(0,2*n)]
+    old_green_function=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
+    difference=1.0
+    while (difference>0.01) :
+        print("called")
+        for r in range(0,parameters.steps):
+            green_function_up[r]=green_function_calculator( hamiltonian_up ,self_energy_up[r] ,  parameters, energy[r])
+            green_function_down[r]=green_function_calculator( hamiltonian_down,self_energy_down[r], parameters, energy[r])
+            
+            spectral_function_up[r]=spectral_function_calculator( green_function_up[r] , parameters)
+            spectral_function_down[r]=spectral_function_calculator( green_function_down[r] , parameters)   
+        #spin_up_occup.append( 1/(2*np.pi)*integrating_function( [ e[0][0] for e in spectral_function] , energy , parameters) )
+        for i in range(0,parameters.chain_length): #this is due to the spin_up_occup being of length chain_length
+            spin_up_occup[i] , spin_down_occup[i] = get_spin_occupation([ e[i][i] for e in spectral_function_up], energy, parameters)
+
+        self_energy_up=self_energy_calculator(parameters, green_function_up, green_function_down, energy )
+        self_energy_down=self_energy_calculator(parameters, green_function_down, green_function_up, energy )
+
+            
+        for r in range(0,parameters.steps):
+                for i in range(0,parameters.chain_length):
+                    self_energy_up[r][i][i]+=parameters.hubbard_interaction*spin_up_occup[i]
+                    self_energy_down[r][i][i]+=parameters.hubbard_interaction*spin_down_occup[i]
+                    for j in range(0, parameters.chain_length): #this is due to the spin_up_occup being of length chain_length
+                    
+                        differencelist[r+i+j]=abs(green_function_up[r][i][j].real-old_green_function[r][i][j].real)
+                        differencelist[n+r+i+j]=abs(green_function_up[r][i][j].imag-old_green_function[r][i][j].imag)
+                        old_green_function[r][i][j]=green_function_up[r][i][j]
+                        
+        difference=max(differencelist)
+        print(difference)
+    for i in range(0, parameters.chain_length):
+        fig = plt.figure()
+        
+        plt.plot(energy, [e[i][i].imag for e in self_energy_up], color='blue', label='imaginary self energy' ) 
+        plt.plot(energy, [e[i][i].real for e in self_energy_up] , color='red' , label='real self energy') 
+
+        plt.legend(loc='upper right')
+        plt.xlabel("energy")
+        plt.ylabel("Self Energy")  
+        plt.show()
+        
+    return green_function_up, green_function_down, spectral_function_up, spectral_function_down, spin_up_occup, spin_down_occup
+
+    
+
+def main():
+    time_start = time.perf_counter()
+    onsite, gamma, hopping, chemical_potential, temperature , hubbard_interaction = 1.0 , 2.0 , -1.0 ,0.0, 0.0 , 0.3
+    chain_length=1
+    steps=81 #number of energy points
+    e_upper_bound , e_lower_bound = 20.0 , -20.0
+    
+    spin_up_occup , spin_down_occup = [ 0.0 for x in range(0, chain_length)] , [ 1.0 for x in range(0, chain_length)]
+
+    parameters=Parameters(onsite, gamma, hopping, chain_length, chemical_potential, temperature, steps, e_upper_bound ,e_lower_bound, hubbard_interaction)
+
+
+    energy=[e_lower_bound+(e_upper_bound-e_lower_bound)/steps*x for x in range(steps)]
+    green_function_up=[create_matrix(chain_length) for z in range(0,steps)] 
+    green_function_down=[create_matrix(chain_length) for z in range(0,steps)]
+    
+    spectral_function_up=[create_matrix(chain_length) for z in range(0,steps)] 
+    spectral_function_down=[create_matrix(chain_length) for z in range(0,steps)]
+    #this creates [ [ [0,0,0] , [0,0,0],, [0,0,0] ] , [0,0,0] , [0,0,0],, [0,0,0] ] ... ], ie one chain_length by chain_length 
+    # dimesional create_matrix for each energy. The first index in spectral function refers to what energy we are selcting. 
+    #the next two indices refer to which enter in our create_matrix we are selecting.    
+    green_function_up, green_function_down, spectral_function_up, spectral_function_down, spin_up_occup, spin_down_occup = get_self_consistent_green_function(parameters,  energy )
+
+    magnetisation=[spin_up_occup[i]-spin_down_occup[i] for i in range(0,chain_length)]
+    #analytic2=[(2/np.pi)*gamma/((energy[x]-onsite-hubbard_interaction*spin_up_occup[-1]+hubbard_interaction*spin_down_occup[-1]*spin_up_occup[-1])**2+4*gamma**2) for x in range(steps)]   
+    print("The magnetisation is ", magnetisation)
+    #print(count)
+    
+    fig = plt.figure()
+   
+
+    for i in range(0,chain_length):
+        plt.plot(energy, [ e[i][i] for e in spectral_function_up]  , color='blue' ) 
+        plt.plot(energy, [ -e[i][i] for e in spectral_function_down], color='red')
+        #plt.plot(energy, dos_spin_up[i] , color='blue', label='spin up DOS' ) 
+        #plt.plot(energy, dos_spin_down[i], color='red', label='spin down DOS')
+#
+   # plt.plot(energy,analytic, color='tomato')
+    #plt.plot(energy,analytic2, color='green')
+    plt.legend(loc='upper right')
+    plt.xlabel("energy")
+    plt.ylabel("Sepctral Function")  
+    plt.show()
+    
+    time_elapsed = (time.perf_counter() - time_start)
+    print(" The time it took the computation for convergence method 3 is" , time_elapsed)
+            
+if __name__=="__main__":#this will only run if it is a script and not a import module
+    main()
