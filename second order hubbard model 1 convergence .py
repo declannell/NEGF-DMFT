@@ -155,9 +155,11 @@ def get_spin_occupation(spectral_function, energy, parameters):
     x= 1/(2*np.pi)*integrating_function( spectral_function ,energy, parameters) 
     return x, 1-x
 
+
+
 def get_self_consistent_green_function(parameters, energy):
-    green_function_up=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
-    green_function_down=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)]
+    gf_int_up=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
+    gf_int_down=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)]
     spectral_function_up=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
     spectral_function_down=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)]
     self_energy_up=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
@@ -167,39 +169,43 @@ def get_self_consistent_green_function(parameters, energy):
 
     hamiltonian_up=HubbardHamiltonian(parameters)
     hamiltonian_down=HubbardHamiltonian(parameters)
-   
     n=parameters.chain_length**2*parameters.steps
     differencelist=[0 for i in range(0,2*n)]
-    old_green_function=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
-    difference=1.0
-    while (difference>0.01) :
-        print("called")
+    old_green_function=[[[1.0+1j for x in range(parameters.chain_length)] for y in range(parameters.chain_length)] for z in range(0,parameters.steps)] 
+    difference=100.0
+    while (difference>0.1) :
+
+
         for r in range(0,parameters.steps):
-            green_function_up[r]=green_function_calculator( hamiltonian_up ,self_energy_up[r] ,  parameters, energy[r])
-            green_function_down[r]=green_function_calculator( hamiltonian_down,self_energy_down[r], parameters, energy[r])
+            gf_int_up[r]=green_function_calculator( hamiltonian_up ,self_energy_up[r] ,  parameters, energy[r])
+            gf_int_down[r]=green_function_calculator( hamiltonian_down, self_energy_down[r], parameters, energy[r])
             
-            spectral_function_up[r]=spectral_function_calculator( green_function_up[r] , parameters)
-            spectral_function_down[r]=spectral_function_calculator( green_function_down[r] , parameters)   
+            spectral_function_up[r]=spectral_function_calculator( gf_int_up[r] , parameters)
+            spectral_function_down[r]=spectral_function_calculator( gf_int_down[r] , parameters)   
         #spin_up_occup.append( 1/(2*np.pi)*integrating_function( [ e[0][0] for e in spectral_function] , energy , parameters) )
         for i in range(0,parameters.chain_length): #this is due to the spin_up_occup being of length chain_length
             spin_up_occup[i] , spin_down_occup[i] = get_spin_occupation([ e[i][i] for e in spectral_function_up], energy, parameters)
 
-        self_energy_up=self_energy_calculator(parameters, green_function_up, green_function_down, energy )
-        self_energy_down=self_energy_calculator(parameters, green_function_down, green_function_up, energy )
+        
+        self_energy_up=self_energy_calculator(parameters, gf_int_up, gf_int_down, energy )
+        self_energy_down=self_energy_calculator(parameters, gf_int_down, gf_int_up, energy )
 
             
         for r in range(0,parameters.steps):
                 for i in range(0,parameters.chain_length):
-                    self_energy_up[r][i][i]+=parameters.hubbard_interaction*spin_up_occup[i]
-                    self_energy_down[r][i][i]+=parameters.hubbard_interaction*spin_down_occup[i]
+                    self_energy_up[r][i][i]+=parameters.hubbard_interaction*spin_down_occup[i]
+                    self_energy_down[r][i][i]+=parameters.hubbard_interaction*spin_up_occup[i]
                     for j in range(0, parameters.chain_length): #this is due to the spin_up_occup being of length chain_length
                     
-                        differencelist[r+i+j]=abs(green_function_up[r][i][j].real-old_green_function[r][i][j].real)
-                        differencelist[n+r+i+j]=abs(green_function_up[r][i][j].imag-old_green_function[r][i][j].imag)
-                        old_green_function[r][i][j]=green_function_up[r][i][j]
+                        differencelist[r+i+j]=abs(gf_int_up[r][i][j].real-old_green_function[r][i][j].real)/abs(old_green_function[r][i][j].real)*100
+                        differencelist[n+r+i+j]=abs(gf_int_up[r][i][j].imag-old_green_function[r][i][j].imag)/abs(old_green_function[r][i][j].imag)*100
+                        old_green_function[r][i][j]=gf_int_up[r][i][j]
                         
         difference=max(differencelist)
-        print(difference)
+        print("The difference is " , difference)
+        print("The mean difference is ", np.mean(differencelist))
+        
+    
     for i in range(0, parameters.chain_length):
         fig = plt.figure()
         
@@ -210,16 +216,16 @@ def get_self_consistent_green_function(parameters, energy):
         plt.xlabel("energy")
         plt.ylabel("Self Energy")  
         plt.show()
-        
-    return green_function_up, green_function_down, spectral_function_up, spectral_function_down, spin_up_occup, spin_down_occup
+    print("The spin up occupaton probability is ", spin_up_occup)
+    return gf_int_up, gf_int_down, spectral_function_up, spectral_function_down, spin_up_occup, spin_down_occup
 
     
 
 def main():
     time_start = time.perf_counter()
     onsite, gamma, hopping, chemical_potential, temperature , hubbard_interaction = 1.0 , 2.0 , -1.0 ,0.0, 0.0 , 0.3
-    chain_length=1
-    steps=81 #number of energy points
+    chain_length=3
+    steps=41 #number of energy points
     e_upper_bound , e_lower_bound = 20.0 , -20.0
     
     spin_up_occup , spin_down_occup = [ 0.0 for x in range(0, chain_length)] , [ 1.0 for x in range(0, chain_length)]
@@ -264,3 +270,4 @@ def main():
             
 if __name__=="__main__":#this will only run if it is a script and not a import module
     main()
+ 

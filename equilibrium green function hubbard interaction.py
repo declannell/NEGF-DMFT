@@ -118,8 +118,8 @@ def get_spin_occupation(spectral_function, energy, parameters):
     return x, 1-x
 
 def get_self_consistent_occup(parameters,  energy ):
-    green_function_up=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
-    green_function_down=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)]
+    gf_hf_up=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
+    gf_hf_down=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)]
     spectral_function_up=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
     spectral_function_down=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)]
     self_energy_up=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
@@ -138,11 +138,11 @@ def get_self_consistent_occup(parameters,  energy ):
     while(difference>0.1):
 
         for r in range(0,parameters.steps):
-            green_function_up[r]=green_function_calculator( hamiltonian_up , self_energy_up[r], parameters, energy[r])
-            green_function_down[r]=green_function_calculator( hamiltonian_down, self_energy_down[r], parameters, energy[r])
+            gf_hf_up[r]=green_function_calculator( hamiltonian_up , self_energy_up[r], parameters, energy[r])
+            gf_hf_down[r]=green_function_calculator( hamiltonian_down, self_energy_down[r], parameters, energy[r])
             
-            spectral_function_up[r]=spectral_function_calculator( green_function_up[r] , parameters)
-            spectral_function_down[r]=spectral_function_calculator( green_function_down[r] , parameters)   
+            spectral_function_up[r]=spectral_function_calculator( gf_hf_up[r] , parameters)
+            spectral_function_down[r]=spectral_function_calculator( gf_hf_down[r] , parameters)   
             
         for i in range(0,parameters.chain_length): #this is due to the spin_up_occup being of length chain_length
            spin_up_occup[i] , spin_down_occup[i] = get_spin_occupation([ e[i][i] for e in spectral_function_up], energy, parameters)
@@ -154,9 +154,9 @@ def get_self_consistent_occup(parameters,  energy ):
                     self_energy_down[r][i][i]=parameters.hubbard_interaction*spin_up_occup[i]
                     for j in range(0, parameters.chain_length): #this is due to the spin_up_occup being of length chain_length
                     
-                        differencelist[r+i+j]=abs(green_function_up[r][i][j].real-old_green_function[r][i][j].real)/abs(old_green_function[r][i][j].real)*100
-                        differencelist[n+r+i+j]=abs(green_function_up[r][i][j].imag-old_green_function[r][i][j].imag)/abs(old_green_function[r][i][j].imag)*100
-                        old_green_function[r][i][j]=green_function_up[r][i][j]
+                        differencelist[r+i+j]=abs(gf_hf_up[r][i][j].real-old_green_function[r][i][j].real)/abs(old_green_function[r][i][j].real)*100
+                        differencelist[n+r+i+j]=abs(gf_hf_up[r][i][j].imag-old_green_function[r][i][j].imag)/abs(old_green_function[r][i][j].imag)*100
+                        old_green_function[r][i][j]=gf_hf_up[r][i][j]
 
         difference=max(differencelist)
         print("The difference is " , difference)
@@ -164,7 +164,7 @@ def get_self_consistent_occup(parameters,  energy ):
 
                 
         print(spin_up_occup)
-    return spectral_function_up, spectral_function_down, spin_up_occup, spin_down_occup
+    return gf_hf_up, gf_hf_down, spectral_function_up, spectral_function_down, spin_up_occup, spin_down_occup
 
 
 
@@ -189,7 +189,7 @@ def main():
     #the next two indices refer to which enter in our create_matrix we are selecting.  
     
     
-    spectral_function_up, spectral_function_down, spin_up_occup, spin_down_occup = get_self_consistent_occup(parameters,  energy )
+    gf_hf_up, gf_hf_down, spectral_function_up, spectral_function_down, spin_up_occup, spin_down_occup = get_self_consistent_occup(parameters,  energy )
 
     magnetisation=[spin_up_occup[i]-spin_down_occup[i] for i in range(0,chain_length)]
     print(" The spin up ocupation is ", spin_up_occup)

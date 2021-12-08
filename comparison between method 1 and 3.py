@@ -4,7 +4,7 @@ import numpy as np
 import math
 from dataclasses import dataclass
 import time
-#some global variables
+
 
 
 class HubbardHamiltonian: 
@@ -154,7 +154,69 @@ def get_spin_occupation(spectral_function, energy, parameters):
     
     x= 1/(2*np.pi)*integrating_function( spectral_function ,energy, parameters) 
     return x, 1-x
+def get_self_consistent_green_function(parameters, energy):
+    gf_int_up=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
+    gf_int_down=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)]
+    spectral_function_up=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
+    spectral_function_down=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)]
+    self_energy_up=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
+    self_energy_down=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
 
+    spin_up_occup , spin_down_occup = [ 0.0 for x in range(0, parameters.chain_length)] , [ 0.0 for x in range(0, parameters.chain_length)]
+
+    hamiltonian_up=HubbardHamiltonian(parameters)
+    hamiltonian_down=HubbardHamiltonian(parameters)
+    n=parameters.chain_length**2*parameters.steps
+    differencelist=[0 for i in range(0,2*n)]
+    old_green_function=[[[1.0+1j for x in range(parameters.chain_length)] for y in range(parameters.chain_length)] for z in range(0,parameters.steps)] 
+    difference=100.0
+    while (difference>0.1) :
+
+
+        for r in range(0,parameters.steps):
+            gf_int_up[r]=green_function_calculator( hamiltonian_up ,self_energy_up[r] ,  parameters, energy[r])
+            gf_int_down[r]=green_function_calculator( hamiltonian_down, self_energy_down[r], parameters, energy[r])
+            
+            spectral_function_up[r]=spectral_function_calculator( gf_int_up[r] , parameters)
+            spectral_function_down[r]=spectral_function_calculator( gf_int_down[r] , parameters)   
+        #spin_up_occup.append( 1/(2*np.pi)*integrating_function( [ e[0][0] for e in spectral_function] , energy , parameters) )
+        for i in range(0,parameters.chain_length): #this is due to the spin_up_occup being of length chain_length
+            spin_up_occup[i] , spin_down_occup[i] = get_spin_occupation([ e[i][i] for e in spectral_function_up], energy, parameters)
+
+        
+        self_energy_up=self_energy_calculator(parameters, gf_int_up, gf_int_down, energy )
+        self_energy_down=self_energy_calculator(parameters, gf_int_down, gf_int_up, energy )
+
+            
+        for r in range(0,parameters.steps):
+                for i in range(0,parameters.chain_length):
+                    self_energy_up[r][i][i]+=parameters.hubbard_interaction*spin_down_occup[i]
+                    self_energy_down[r][i][i]+=parameters.hubbard_interaction*spin_up_occup[i]
+                    for j in range(0, parameters.chain_length): #this is due to the spin_up_occup being of length chain_length
+                    
+                        differencelist[r+i+j]=abs(gf_int_up[r][i][j].real-old_green_function[r][i][j].real)/abs(old_green_function[r][i][j].real)*100
+                        differencelist[n+r+i+j]=abs(gf_int_up[r][i][j].imag-old_green_function[r][i][j].imag)/abs(old_green_function[r][i][j].imag)*100
+                        old_green_function[r][i][j]=gf_int_up[r][i][j]
+                        
+        difference=max(differencelist)
+        print("The difference is " , difference)
+        print("The mean difference is ", np.mean(differencelist))
+    for i in range(0, parameters.chain_length):
+        fig = plt.figure()
+        
+        plt.plot(energy, [e[i][i].imag for e in self_energy_up], color='blue', label='imaginary self energy' ) 
+        plt.plot(energy, [e[i][i].real for e in self_energy_up] , color='red' , label='real self energy') 
+
+        plt.legend(loc='upper right')
+        plt.xlabel("energy")
+        plt.ylabel("Self Energy")  
+        plt.show()
+    print("The spin up occupaton probability is ", spin_up_occup)
+    print("method 1 is done \n")
+    print(" ")
+    return gf_int_up, gf_int_down, spectral_function_up, spectral_function_down, spin_up_occup, spin_down_occup
+
+    
 def get_self_consistent_occup(parameters,  energy ):
     gf_hf_up=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
     gf_hf_down=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)]
@@ -197,11 +259,11 @@ def get_self_consistent_occup(parameters,  energy ):
                         old_green_function[r][i][j]=gf_hf_up[r][i][j]
 
         difference=max(differencelist)
-        print("The difference is " , difference)
+        #print("The difference is " , difference)
 
 
                 
-        print(spin_up_occup)
+    print("For method 3, hf convergence the spin up occupation is ", spin_up_occup)
     return gf_hf_up, gf_hf_down, spectral_function_up, spectral_function_down, spin_up_occup, spin_down_occup
 
 
@@ -221,7 +283,7 @@ def get_second_order_correction(parameters, gf_int_up, gf_int_down, spin_up_occu
     old_green_function=[[[1.0+1j for x in range(parameters.chain_length)] for y in range(parameters.chain_length)] for z in range(0,parameters.steps)] 
     difference=100.0
     while (difference>0.1) :
-        print("called")
+
         self_energy_2nd_up=self_energy_calculator(parameters, gf_int_up, gf_int_down, energy )
         self_energy_2nd_down=self_energy_calculator(parameters, gf_int_down, gf_int_up, energy )
         for r in range(0,parameters.steps):
@@ -254,16 +316,17 @@ def get_second_order_correction(parameters, gf_int_up, gf_int_down, spin_up_occu
         percentlist[i]=abs(new_spin_up_occup[i]-spin_up_occup[i])/abs(spin_up_occup[i])*100
     
     print( " this is a max percentage difference of ", max(percentlist))
+    print(" Method 3 is done ")
+    print(" ")
     
     return gf_int_up, gf_int_down, spectral_function_up, spectral_function_down, new_spin_up_occup, spin_down_occup
 
-    
 
 def main():
     time_start = time.perf_counter()
     onsite, gamma, hopping, chemical_potential, temperature , hubbard_interaction = 1.0 , 2.0 , -1.0 ,0.0, 0.0 , 0.3
     chain_length=1
-    steps=81 #number of energy points
+    steps=321 #number of energy points
     e_upper_bound , e_lower_bound = 20.0 , -20.0
     
     spin_up_occup , spin_down_occup = [ 0.0 for x in range(0, chain_length)] , [ 1.0 for x in range(0, chain_length)]
@@ -272,62 +335,89 @@ def main():
 
 
     energy=[e_lower_bound+(e_upper_bound-e_lower_bound)/steps*x for x in range(steps)]
+    
+    
 
     
-    spectral_function_up=[create_matrix(chain_length) for z in range(0,steps)] 
-    spectral_function_down=[create_matrix(chain_length) for z in range(0,steps)]
+
     #this creates [ [ [0,0,0] , [0,0,0],, [0,0,0] ] , [0,0,0] , [0,0,0],, [0,0,0] ] ... ], ie one chain_length by chain_length 
     # dimesional create_matrix for each energy. The first index in spectral function refers to what energy we are selcting. 
     #the next two indices refer to which enter in our create_matrix we are selecting.    
-    gf_hf_up, gf_hf_down, spectral_function_up, spectral_function_down, spin_up_occup, spin_down_occup = get_self_consistent_occup(parameters,  energy )
+    gf_int_up1, gf_int_down1, spectral_function_up1, spectral_function_down1, spin_up_occup1, spin_down_occup1 = get_self_consistent_green_function(parameters,  energy )
 
-    magnetisation=[spin_up_occup[i]-spin_down_occup[i] for i in range(0,chain_length)]
+    gf_hf_up3, gf_hf_down3, spectral_function_up3, spectral_function_down3, spin_up_occup3, spin_down_occup3= get_self_consistent_occup(parameters, energy)
+
+    gf_int_up3, gf_int_down3, spectral_function_up3, spectral_function_down3, spin_up_occup3, spin_down_occup3=get_second_order_correction(parameters, gf_hf_up3, gf_hf_down3, spin_up_occup3, spin_down_occup3, energy)
+
     #analytic2=[(2/np.pi)*gamma/((energy[x]-onsite-hubbard_interaction*spin_up_occup[-1]+hubbard_interaction*spin_down_occup[-1]*spin_up_occup[-1])**2+4*gamma**2) for x in range(steps)]   
-    print("The magnetisation for first order convergence is ", magnetisation)
+    print("The spin up occupancy for method 1 is ", spin_up_occup1)
+    print("The spin up occupancy for method 3 is ", spin_up_occup3)    
     #print(count)
     
     fig = plt.figure()
    
 
-    for i in range(0,chain_length):
-        plt.plot(energy, [ e[i][i] for e in spectral_function_up]  , color='blue' ) 
-        plt.plot(energy, [ -e[i][i] for e in spectral_function_down], color='red')
+    for i in range(0,parameters.chain_length):
+        plt.plot(energy, [ e[i][i] for e in spectral_function_up1]  , color='blue' ) 
+        #plt.plot(energy, [ -e[i][i] for e in spectral_function_down1], color='blue')
+        plt.plot(energy, [ e[i][i] for e in spectral_function_up3]  , color='red' ) 
+        #plt.plot(energy, [ -e[i][i] for e in spectral_function_down3], color='red')
         #plt.plot(energy, dos_spin_up[i] , color='blue', label='spin up DOS' ) 
         #plt.plot(energy, dos_spin_down[i], color='red', label='spin down DOS')
-#
    # plt.plot(energy,analytic, color='tomato')
     #plt.plot(energy,analytic2, color='green')
     plt.legend(loc='upper right')
     plt.xlabel("energy")
     plt.ylabel("Sepctral Function")  
+    plt.xlim(-5,5)
     plt.show()
     
-    
-    gf_int_up, gf_int_down, spectral_function_up, spectral_function_down , spin_up_occup, spin_down_occup= get_second_order_correction(parameters, gf_hf_up, gf_hf_down, spin_up_occup, spin_down_occup , energy )
-
-    
-    magnetisation=[spin_up_occup[i]-spin_down_occup[i] for i in range(0,chain_length)]
-    #analytic2=[(2/np.pi)*gamma/((energy[x]-onsite-hubbard_interaction*spin_up_occup[-1]+hubbard_interaction*spin_down_occup[-1]*spin_up_occup[-1])**2+4*gamma**2) for x in range(steps)]   
-    print("The magnetisation for 2nd order convergence is ", magnetisation)
-    #print(count)
-    
-    fig = plt.figure()
-   
-
-    for i in range(0,chain_length):
-        plt.plot(energy, [ e[i][i] for e in spectral_function_up]  , color='blue' ) 
-        plt.plot(energy, [ -e[i][i] for e in spectral_function_down], color='red')
+    for i in range(0,parameters.chain_length):
+        plt.plot(energy, [ e[i][i] for e in gf_int_up1]  , color='blue' ) 
+        #plt.plot(energy, [ -e[i][i] for e in spectral_function_down1], color='blue')
+        plt.plot(energy, [ e[i][i] for e in gf_int_up3]  , color='red' ) 
+        #plt.plot(energy, [ -e[i][i] for e in spectral_function_down3], color='red')
         #plt.plot(energy, dos_spin_up[i] , color='blue', label='spin up DOS' ) 
         #plt.plot(energy, dos_spin_down[i], color='red', label='spin down DOS')
-#
    # plt.plot(energy,analytic, color='tomato')
     #plt.plot(energy,analytic2, color='green')
     plt.legend(loc='upper right')
+    plt.xlim(-5,5)
     plt.xlabel("energy")
-    plt.ylabel("Sepctral Function")  
+    plt.ylabel("Green Function")  
     plt.show()
+      
+#
+    n=parameters.chain_length**2*parameters.steps
+    differencelist=[0 for i in range(0,2*n)]
+    
+    for r in range(0,parameters.steps):
+                for i in range(0,parameters.chain_length):
+                    for j in range(0, parameters.chain_length): #this is due to the spin_up_occup being of length chain_length
+                    
+                        differencelist[r+i+j]=abs(gf_int_up3[r][i][j].real-gf_int_up1[r][i][j].real)/abs(gf_int_up1[r][i][j].real)*100
+                        differencelist[n+r+i+j]=abs(gf_int_up3[r][i][j].imag-gf_int_up1[r][i][j].imag)/abs(gf_int_up3[r][i][j].imag)*100
+
+                        
+    (m,i) = max((v,i) for i,v in enumerate(differencelist))
+#(5, 2)
+    print("The max difference between method 1 and 3 is " , m , i)
+    print("The mean difference between method 1 and 3 is ", np.mean(differencelist))
+    print(gf_int_up1[50][0][0], gf_int_up3[50][0][0])
+    
+    
+
+    
     time_elapsed = (time.perf_counter() - time_start)
     print(" The time it took the computation for convergence method 3 is" , time_elapsed)
             
 if __name__=="__main__":#this will only run if it is a script and not a import module
     main()
+    
+
+
+
+    
+
+
+
