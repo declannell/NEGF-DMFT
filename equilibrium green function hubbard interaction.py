@@ -12,7 +12,6 @@ class HubbardHamiltonian:
     gamma: float
     hopping: float
     hubbard_interaction: float
-    spin_occup: None
     chain_length: int
     matrix=None
     effective_matrix=None
@@ -20,13 +19,13 @@ class HubbardHamiltonian:
     Self_energy_right=None
 
     
-    def __init__(self, parameters, _spin_occup ):
+    def __init__(self, parameters):
         self.onsite = parameters.onsite
         self.hopping = parameters.hopping
         self.chain_length = parameters.chain_length
         self.gamma = parameters.gamma
         self.hubbard_interaction=parameters.hubbard_interaction
-        self.spin_occup  = _spin_occup   #these are now 1d arrays as I only pass the occupation level for a specific iteration.
+      #these are now 1d arrays as I only pass the occupation level for a specific iteration.
             
         self.matrix=create_matrix(self.chain_length)
         self.efffective_matrix=create_matrix(self.chain_length)
@@ -34,7 +33,7 @@ class HubbardHamiltonian:
         self.Self_energy_right=create_matrix(self.chain_length)
         
         for i in range(0,self.chain_length):
-            self.matrix[i][i]=self.onsite+self.hubbard_interaction*self.spin_occup[i]
+            self.matrix[i][i]=self.onsite
             
         for i in range(0,self.chain_length-1):
             self.matrix[i][i+1]=self.hopping
@@ -99,12 +98,12 @@ def spectral_function_calculator( green_function , parameters):
 def create_matrix(size):
     return [[0.0 for x in range(size)] for y in range(size)]
           
-def green_function_calculator( hamiltonian , parameters, energy):
+def green_function_calculator( hamiltonian , self_energy, parameters, energy):
     inverse_green_function=create_matrix(parameters.chain_length)
     for i in range(0,parameters.chain_length):
            for j in range(0,parameters.chain_length): 
                if(i==j):                
-                   inverse_green_function[i][j]=-hamiltonian.efffective_matrix[i][j]+energy
+                   inverse_green_function[i][j]=-hamiltonian.efffective_matrix[i][j]+energy-self_energy[i][j]
                else:
                    inverse_green_function[i][j]=-hamiltonian.efffective_matrix[i][j]
         #print(inverse_green_function[i])
@@ -123,41 +122,47 @@ def get_self_consistent_occup(parameters,  energy ):
     green_function_down=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)]
     spectral_function_up=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
     spectral_function_down=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)]
+    self_energy_up=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
+    self_energy_down=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)]     
     spin_up_occup , spin_down_occup = [ 0.0 for x in range(0, parameters.chain_length)] , [ 0.0 for x in range(0, parameters.chain_length)]
     #this creates [ [ [0,0,0] , [0,0,0],, [0,0,0] ] , [0,0,0] , [0,0,0],, [0,0,0] ] ... ], ie one chain_length by chain_length 
     # dimesional create_matrix for each energy. The first index in spectral function refers to what energy we are selcting. 
     #the next two indices refer to which enter in our create_matrix we are selecting.    
     n=parameters.chain_length**2*parameters.steps
     differencelist=[0 for i in range(0,2*n)]
-    old_green_function=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
-    difference=1.0
-    while(difference>0.0001):
-        hamiltonian_up=HubbardHamiltonian(parameters, spin_down_occup)
-        hamiltonian_down=HubbardHamiltonian(parameters,  spin_up_occup) 
-        #hamiltonian_up.print()
-        #hamiltonian_down.print()
+    old_green_function=[[[1.0+1j for x in range(parameters.chain_length)] for y in range(parameters.chain_length)] for z in range(0,parameters.steps)] 
+    difference=100.0
+    hamiltonian_up=HubbardHamiltonian(parameters)
+    hamiltonian_down=HubbardHamiltonian(parameters) 
+    
+    while(difference>0.1):
+
         for r in range(0,parameters.steps):
-            green_function_up[r]=green_function_calculator( hamiltonian_up , parameters, energy[r])
-            green_function_down[r]=green_function_calculator( hamiltonian_down, parameters, energy[r])
+            green_function_up[r]=green_function_calculator( hamiltonian_up , self_energy_up[r], parameters, energy[r])
+            green_function_down[r]=green_function_calculator( hamiltonian_down, self_energy_down[r], parameters, energy[r])
             
             spectral_function_up[r]=spectral_function_calculator( green_function_up[r] , parameters)
             spectral_function_down[r]=spectral_function_calculator( green_function_down[r] , parameters)   
+            
+        for i in range(0,parameters.chain_length): #this is due to the spin_up_occup being of length chain_length
+           spin_up_occup[i] , spin_down_occup[i] = get_spin_occupation([ e[i][i] for e in spectral_function_up], energy, parameters)
+
         #spin_up_occup.append( 1/(2*np.pi)*integrating_function( [ e[0][0] for e in spectral_function] , energy , parameters) )
         for r in range(0,parameters.steps):
                 for i in range(0,parameters.chain_length):
+                    self_energy_up[r][i][i]=parameters.hubbard_interaction*spin_down_occup[i]
+                    self_energy_down[r][i][i]=parameters.hubbard_interaction*spin_up_occup[i]
                     for j in range(0, parameters.chain_length): #this is due to the spin_up_occup being of length chain_length
                     
-                        differencelist[r+i+j]=abs(green_function_up[r][i][j].real-old_green_function[r][i][j].real)
-                        differencelist[n+r+i+j]=abs(green_function_up[r][i][j].imag-old_green_function[r][i][j].imag)
+                        differencelist[r+i+j]=abs(green_function_up[r][i][j].real-old_green_function[r][i][j].real)/abs(old_green_function[r][i][j].real)*100
+                        differencelist[n+r+i+j]=abs(green_function_up[r][i][j].imag-old_green_function[r][i][j].imag)/abs(old_green_function[r][i][j].imag)*100
                         old_green_function[r][i][j]=green_function_up[r][i][j]
-        
-        #print(differencelist)
-        #print(" ")
+
         difference=max(differencelist)
         print("The difference is " , difference)
-        
-        for i in range(0,parameters.chain_length): #this is due to the spin_up_occup being of length chain_length
-           spin_up_occup[i] , spin_down_occup[i] = get_spin_occupation([ e[i][i] for e in spectral_function_up], energy, parameters)
+
+
+                
         print(spin_up_occup)
     return spectral_function_up, spectral_function_down, spin_up_occup, spin_down_occup
 

@@ -156,13 +156,7 @@ def get_self_consistent_occup(parameters,  energy ):
         for r in range(0,parameters.steps):
             gf_int_up[r]=gf_calculator( hamiltonian_up  , self_energy_up[r], parameters, energy[r])
             gf_int_down[r]=gf_calculator( hamiltonian_down  , self_energy_down[r], parameters, energy[r])
-            
 
-        #hamiltonian_up.print()
-        #hamiltonian_down.print()
-        for r in range(0,parameters.steps):
-            green_function_up[r]=green_function_calculator( hamiltonian_up , parameters, energy[r])
-            green_function_down[r]=green_function_calculator( hamiltonian_down, parameters, energy[r])
             
             spectral_function_up[r]=spectral_function_calculator( gf_int_up[r] , parameters)
             spectral_function_down[r]=spectral_function_calculator( gf_int_down[r] , parameters)   
@@ -173,8 +167,8 @@ def get_self_consistent_occup(parameters,  energy ):
         print(spin_up_occup)
         for r in range(0,parameters.steps):
                 for i in range(0,parameters.chain_length):
-                    self_energy_up[r][i][i]=spin_up_occup[i]
-                    self_energy_down[r][i][i]=spin_down_occup[i]
+                    self_energy_up[r][i][i]=spin_down_occup[i]# be very careful with this u idiot
+                    self_energy_down[r][i][i]=spin_up_occup[i]
                     for j in range(0, parameters.chain_length): #this is due to the spin_up_occup being of length chain_length
                     
                         differencelist[r+i+j]=abs(gf_int_up[r][i][j].real-old_green_function[r][i][j].real)
