@@ -224,8 +224,8 @@ def get_self_consistent_green_function(parameters, energy):
 def main():
     time_start = time.perf_counter()
     onsite, gamma, hopping, chemical_potential, temperature , hubbard_interaction = 1.0 , 2.0 , -1.0 ,0.0, 0.0 , 0.3
-    chain_length=3
-    steps=41 #number of energy points
+    chain_length=2
+    steps=81 #number of energy points
     e_upper_bound , e_lower_bound = 20.0 , -20.0
     
     spin_up_occup , spin_down_occup = [ 0.0 for x in range(0, chain_length)] , [ 1.0 for x in range(0, chain_length)]

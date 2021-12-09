@@ -171,9 +171,9 @@ def get_self_consistent_occup(parameters,  energy ):
 def main():
     time_start = time.perf_counter()
     onsite, gamma, hopping, chemical_potential, temperature , hubbard_interaction = 1.0 , 2.0 , -1.0 ,0.0, 0.0 , 0.30
-    chain_length=1
+    chain_length=5
     
-    steps=81 #number of energy points
+    steps=321 #number of energy points
     e_upper_bound , e_lower_bound = 20.0 , -20.0
     
     spin_up_occup , spin_down_occup = [ 0.0 for x in range(0, chain_length)] , [ 1.0 for x in range(0, chain_length)]
