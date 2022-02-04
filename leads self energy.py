@@ -67,6 +67,7 @@ class SelfEnergy:
             self.sgf(i,k_y[i])
             self.lead_self_energy(i)
             self.plot(i)
+            self.text_file(i)
             
         
     def assign_hamiltonian(self,k_y):
@@ -92,12 +93,44 @@ class SelfEnergy:
             row_string = " ".join((str(r).rjust(5, " ") for r in matrix[i])) #rjust adds padding, join connects them all
             print(row_string)
     
+    def text_file(self ,num): #num is the number of k-points
+        f = open(r"C:\Users\user\Desktop\Green function code\Green's Function\embedding_self_energy.txt", "w")
+        for r in range(0, self.parameters.steps):
+            #print(self.parameters.steps)
+            
+            f.write(str(self.energy[r].real) )
+            f.write( "," )
+            f.write(str(self.self_energy_left[r][num][0][0].real ))
+            f.write( "," )          
+            f.write(str(self.self_energy_left[r][num][0][0].imag ))
+            f.write( "," )
+            f.write(str(self.self_energy_right[r][num][0][0].real ))
+            f.write( "," )
+            f.write(str(self.self_energy_right[r][num][0][0].imag ))
+            f.write( "," )
+            """
+            f.write(str(self.energy[r].real) )
+            f.write( "," )
+            f.write(str(0))
+            f.write( "," )          
+            f.write(str(-2))
+            f.write( "," )
+            f.write(str(0))
+            f.write( "," )
+            f.write(str(-2))
+            f.write( "," )
+            """
+            
+        print("the number of columns should be " , r+1)
+        f.close()
+
+    
     def plot(self, num):
         fig = plt.figure()
         
         plt.plot(self.energy, [e[num][0][0].imag for e in self.self_energy_left], color='blue', label='imaginary self energy' ) 
         plt.plot(self.energy, [e[num][0][0].real for e in self.self_energy_left] , color='red' , label='real self energy') 
-
+        plt.title(" Numerical Self Energy")
         plt.legend(loc='upper right')
         plt.xlabel("energy")
         plt.ylabel("Self Energy")  
@@ -109,11 +142,11 @@ class SelfEnergy:
         a=[0 for r in range(0,self.parameters.steps)]
         
         if(self.parameters.chain_length_y==1):
-            for r in range(0,self.parameters.steps):
-                t_0[r]=self.parameters.hopping_lx/(self.energy[r]-self.parameters.onsite)
-                a[r]=t_0[r]
-                t_next[r]=t_0[r]
-                self.transfer_matrix[r][0][0]=t_0[r]
+            for r in range(0,self.parameters.steps):                
+                t_next[r]=self.parameters.hopping_lx/(self.energy[r]-self.parameters.onsite)
+                a[r]=t_next[r]
+                self.transfer_matrix[r][0][0]=t_next[r]
+                
         else:
             #print(-self.parameters.onsite-2*self.parameters.hopping_ly*np.cos(k_y))
             for r in range(0,self.parameters.steps):
@@ -139,7 +172,7 @@ class SelfEnergy:
                 differencelist[n+r]=abs(self.transfer_matrix[r][0][0].imag-old_transfer[r].imag)
                 old_transfer[r]=self.transfer_matrix[r][0][0]
             difference=max(differencelist)
-            #print("The difference is ", difference)
+            print("The difference is ", difference)
         print(" This converged in " ,count, " iterations.\n")
 
     def sgf(self, num, k_y):
@@ -166,20 +199,52 @@ def matrix_mult(a,b, size):#assume both are square matrices
         for j in range(0,size):
             for k in range(0,size):
                 c[i][j]=a[i][k]*b[k][j]
+                
+def theta_function(a,b):
+    if( a > b):
+        return 1
+    else:
+        return 0
+    
+def sgn(x):
+    if x>0 :
+        return 1
+    elif x<0 :
+        return -1
+    
+def analytic_se(parameters, energy):
+    analytic_se= [ 0 for i  in range(parameters.steps)]# this assume the interaction between the scattering region and leads is nearest neighbour 
+    for i in range(0,parameters.steps):
+        x=(energy[i].real-parameters.onsite)/(2*parameters.hopping_lx)
+        #print(x, energy[i])
+        analytic_se[i]=(parameters.hopping_ld**2) * (1/parameters.hopping_lx) * ( x  ) 
+        if (abs(x) > 1):
+            analytic_se[i] = analytic_se[i] - (parameters.hopping_ld**2) * (1/parameters.hopping_lx) * (  sgn(x) * np.sqrt(abs(x)*abs(x)-1) ) 
+        elif( abs(x) < 1):
+            analytic_se[i] = analytic_se[i] - (parameters.hopping_ld**2) * abs((1/parameters.hopping_lx)) * (1j*np.sqrt(1-abs(x)*abs(x) ))
+
+    #print(analytic_se)
+    plt.plot(energy, [ e.imag for e in analytic_se ], color='blue', label='imaginary self energy' ) 
+    plt.plot(energy, [e.real for e in analytic_se] , color='red' , label='real self energy') 
+    plt.title(" Analytical Self Energy")
+    plt.legend(loc='upper right')
+    plt.xlabel("energy")
+    plt.ylabel("Self Energy")  
+    plt.show()
 
 def main():
 
     onsite, gamma, hopping_lx, hopping_ly , hopping_ld, chemical_potential, temperature , hubbard_interaction = 0.0 , 2.0 , -.5 , -0.5,-0.5,0.0, 0.0 , 0.3
-    chain_length_x=1
-    chain_length_y=3
+    #The left and right self energies are not functions of the number of sites in the scattering region
+    chain_length_y=1
     principal_layer=1
-    steps=1005 #number of energy points
-    e_upper_bound , e_lower_bound = 5 , -5
+    steps=81 #number of energy points
+    e_upper_bound , e_lower_bound = 10 , -10
     energy=[e_lower_bound+(e_upper_bound-e_lower_bound)/steps*x+0.0000001*1j  for x in range(steps)]
-    parameters=Parameters(onsite, gamma, hopping_lx, hopping_ly, hopping_ld, chain_length_x,chain_length_y, chemical_potential, temperature, steps, e_upper_bound ,e_lower_bound, hubbard_interaction)
+    parameters=Parameters(onsite, gamma, hopping_lx, hopping_ly, hopping_ld, 0 ,chain_length_y, chemical_potential, temperature, steps, e_upper_bound ,e_lower_bound, hubbard_interaction)
     self_energy = SelfEnergy(parameters, energy, principal_layer)
     #self_energy.print()
-
+    analytic_se(parameters, energy)
     #print(energy)
 
 if __name__=="__main__":#this will only run if it is a script and not a import module

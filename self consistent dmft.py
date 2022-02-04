@@ -156,8 +156,8 @@ def get_spin_occupation(spectral_function, energy, parameters):
     x= 1/(2*np.pi)*integrating_function( spectral_function ,energy, parameters) 
     return x, 1-x
 
-def inner_dmft(parameters, gf_int_up, gf_int_down, energy):
-    g_local_up=[create_matrix(1) for i in range(parameters.steps)]
+def inner_dmft(parameters, gf_int_up, gf_int_down, energy): #this solves the impurity problem self consistently
+    g_local_up=[create_matrix(1) for i in range(parameters.steps)]#computationally this is a pointer to a pointer which contain g_local. This must be inefficient computationally.
     g_local_down=[create_matrix(1) for i in range(parameters.steps)]
     local_spectral_up=[create_matrix(1) for i in range(parameters.steps)]
     self_energy_up=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
@@ -168,6 +168,7 @@ def inner_dmft(parameters, gf_int_up, gf_int_down, energy):
   
     hamiltonian=HubbardHamiltonian(parameters)
     g_initial=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
+    
     for r in range(0,parameters.steps):
         g_initial[r]=green_function_calculator( hamiltonian ,self_energy_up[r] ,  parameters, energy[r])
  
@@ -178,7 +179,7 @@ def inner_dmft(parameters, gf_int_up, gf_int_down, energy):
     differencelist=[0 for i in range(0,2*n)]    
     for i in range(0, parameters.chain_length):
               
-        for r in range(0,parameters.steps):
+        for r in range(0,parameters.steps):#this sets the impurity green function to the local lattice green function for each lattice site(the i for loop)
             g_local_up[r][0][0]=gf_int_up[r][i][i]
             g_local_down[r][0][0]=gf_int_down[r][i][i]
             
@@ -186,14 +187,15 @@ def inner_dmft(parameters, gf_int_up, gf_int_down, energy):
                                 
         old_green_function=[0 for z in range(0,parameters.steps)] 
         difference=100.0
-        while(difference>0.001):
+        while(difference>0.001):#this is solving the impurity problem self consistently which in principle should be correct
             #print(g_local_up)
+            #to not solve the impurity problem self consistently we should set difference =0 so only 1 while loop occurs
             for r in range(0,parameters.steps):
                 local_spectral_up[r][0][0]=1j*(g_local_up[r][0][0]-np.conjugate(g_local_up[r][0][0]))
 
             #print(local_spectral_up)
             local_spin_up , local_spin_down = get_spin_occupation([ e[0][0] for e in local_spectral_up], energy, parameters)
-            print("The spin occupancy is ", local_spin_up, " atom ", i)
+            #print("The spin occupancy is ", local_spin_up, " atom ", i)
             
             #(g_local_up)
             local_sigma_up=self_energy_calculator(parameters, g_local_up, g_local_down, energy )
@@ -203,7 +205,7 @@ def inner_dmft(parameters, gf_int_up, gf_int_down, energy):
                  local_sigma_up[r][0][0]+=parameters.hubbard_interaction*local_spin_down
                  local_sigma_down[r][0][0]+=parameters.hubbard_interaction*local_spin_up
                  
-                 g_initial_up[r]=1/((1/g_local_up[r][0][0])+local_sigma_up[r][0][0])
+                 g_initial_up[r]=1/((1/g_local_up[r][0][0])+local_sigma_up[r][0][0])# this is getting the new dynamical mean field
                  g_initial_down[r]=1/((1/g_local_down[r][0][0])+local_sigma_down[r][0][0])
                  
                  g_local_up[r][0][0]=1/((1/g_initial_up[r])-local_sigma_up[r][0][0])
@@ -214,12 +216,12 @@ def inner_dmft(parameters, gf_int_up, gf_int_down, energy):
                         differencelist[n+r]=abs(g_local_up[r][0][0].imag-old_green_function[r].imag)
                         old_green_function[r]=g_local_up[r][0][0]
 
-            difference=max(differencelist)
-            print("The inner difference is " , difference)
-            print("The inner  mean difference is ", np.mean(differencelist)) 
-            
-        print(" ")
-        for r in range(0,parameters.steps):
+            #difference=max(differencelist)
+            difference=0
+            #print("The inner difference is " , difference)
+            #print("The inner  mean difference is ", np.mean(differencelist)) 
+
+        for r in range(0,parameters.steps): #this then returns a diagonal self energy
             self_energy_up[r][i][i]=local_sigma_up[r][0][0]
             self_energy_down[r][i][i]=local_sigma_down[r][0][0]            
         spin_up_occup[i]=local_spin_up
@@ -227,7 +229,7 @@ def inner_dmft(parameters, gf_int_up, gf_int_down, energy):
     
     return self_energy_up, self_energy_down, spin_up_occup , spin_down_occup
 
-def gf_dmft(parameters, energy):
+def gf_dmft(parameters, energy): # this function does not solve the impurity green function self consistently
     gf_int_up=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
     gf_int_down=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)]
     spectral_function_up=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
@@ -247,13 +249,13 @@ def gf_dmft(parameters, energy):
     while (difference>0.001) :
 
 
-        for r in range(0,parameters.steps):
+        for r in range(0,parameters.steps):#this initially creates the non-interacting green functions. It then updates using a diagonal self energy.
             gf_int_up[r]=green_function_calculator( hamiltonian_up ,self_energy_up[r] ,  parameters, energy[r])
             gf_int_down[r]=green_function_calculator( hamiltonian_down, self_energy_down[r], parameters, energy[r])
-
+        #spin_up_occup are included within the self energy as well. Spin_up_occup is only included so we can view there value
         self_energy_up, self_energy_down, spin_up_occup , spin_down_occup =inner_dmft(parameters, gf_int_up, gf_int_down, energy)
 
-        print( spin_up_occup)
+        print( "In the first DMFT loop the spin occupation is " , spin_up_occup)
         for r in range(0,parameters.steps):
                 for i in range(0,parameters.chain_length):
                     for j in range(0, parameters.chain_length): #this is due to the spin_up_occup being of length chain_length
@@ -290,8 +292,8 @@ def main():
     time_start = time.perf_counter()
     onsite, gamma, hopping, chemical_potential, temperature , hubbard_interaction = 1.0 , 2.0 , -1.0 ,0.0, 0.0 , 0.3
     chain_length=2
-    steps=81 #number of energy points
-    e_upper_bound , e_lower_bound = 20.0 , -20.0
+    steps=161 #number of energy points
+    e_upper_bound , e_lower_bound = 10.0 , -10.0
     
     spin_up_occup , spin_down_occup = [ 0.0 for x in range(0, chain_length)] , [ 1.0 for x in range(0, chain_length)]
 
@@ -335,5 +337,3 @@ def main():
             
 if __name__=="__main__":#this will only run if it is a script and not a import module
     main()
-
- 

@@ -160,6 +160,8 @@ def get_spin_occupation(spectral_function, energy, parameters):
 def get_self_consistent_green_function(parameters, energy):
     gf_int_up=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
     gf_int_down=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)]
+    iter_gf_up=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
+    iter_gf_down=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)]
     spectral_function_up=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
     spectral_function_down=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)]
     self_energy_up=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
@@ -173,8 +175,9 @@ def get_self_consistent_green_function(parameters, energy):
     differencelist=[0 for i in range(0,2*n)]
     old_green_function=[[[1.0+1j for x in range(parameters.chain_length)] for y in range(parameters.chain_length)] for z in range(0,parameters.steps)] 
     difference=100.0
+    count =0
     while (difference>0.1) :
-
+        
 
         for r in range(0,parameters.steps):
             gf_int_up[r]=green_function_calculator( hamiltonian_up ,self_energy_up[r] ,  parameters, energy[r])
@@ -190,7 +193,7 @@ def get_self_consistent_green_function(parameters, energy):
         self_energy_up=self_energy_calculator(parameters, gf_int_up, gf_int_down, energy )
         self_energy_down=self_energy_calculator(parameters, gf_int_down, gf_int_up, energy )
 
-            
+        print("occupation probaility is ", spin_up_occup)
         for r in range(0,parameters.steps):
                 for i in range(0,parameters.chain_length):
                     self_energy_up[r][i][i]+=parameters.hubbard_interaction*spin_down_occup[i]
@@ -202,10 +205,31 @@ def get_self_consistent_green_function(parameters, energy):
                         old_green_function[r][i][j]=gf_int_up[r][i][j]
                         
         difference=max(differencelist)
-        print("The difference is " , difference)
-        print("The mean difference is ", np.mean(differencelist))
+        #print("The difference is " , difference)
+        #print("The mean difference is ", np.mean(differencelist))
+        """
+        for i in range(0,parameters.chain_length):
+                plt.plot(energy, [ e[i][i] for e in spectral_function_up]  , color='blue' ) 
+                #plt.plot(energy, [ -e[i][i] for e in spectral_function_down], color='red')
+        #plt.plot(energy, dos_spin_up[i] , color='blue', label='spin up DOS' ) 
+        #plt.plot(energy, dos_spin_down[i], color='red', label='spin down DOS')
+#
+   # plt.plot(energy,analytic, color='tomato')
+    #plt.plot(energy,analytic2, color='green')
+        plt.legend(loc='upper right')
+        plt.xlabel("energy")
+        plt.ylabel("Sepctral Function")  
+        plt.show()    
+        """
         
-    
+        
+        if (count==1) :
+            print("The count is zero")
+            iter_gf_up = gf_int_up
+            iter_gf_down=gf_int_down
+
+        count+=1
+    """
     for i in range(0, parameters.chain_length):
         fig = plt.figure()
         
@@ -217,13 +241,14 @@ def get_self_consistent_green_function(parameters, energy):
         plt.ylabel("Self Energy")  
         plt.show()
     print("The spin up occupaton probability is ", spin_up_occup)
-    return gf_int_up, gf_int_down, spectral_function_up, spectral_function_down, spin_up_occup, spin_down_occup
+    """
+    return gf_int_up, gf_int_down, spectral_function_up, spectral_function_down, spin_up_occup, spin_down_occup, iter_gf_up, iter_gf_down
 
     
 
 def main():
     time_start = time.perf_counter()
-    onsite, gamma, hopping, chemical_potential, temperature , hubbard_interaction = 1.0 , 2.0 , -1.0 ,0.0, 0.0 , 0.3
+    onsite, gamma, hopping, chemical_potential, temperature , hubbard_interaction = 1.0 , 2.0 , -1.0 ,0.0, 0.0 , 10
     chain_length=2
     steps=81 #number of energy points
     e_upper_bound , e_lower_bound = 20.0 , -20.0
@@ -237,24 +262,44 @@ def main():
     green_function_up=[create_matrix(chain_length) for z in range(0,steps)] 
     green_function_down=[create_matrix(chain_length) for z in range(0,steps)]
     
-    spectral_function_up=[create_matrix(chain_length) for z in range(0,steps)] 
-    spectral_function_down=[create_matrix(chain_length) for z in range(0,steps)]
+    spectral_function_up1=[create_matrix(chain_length) for z in range(0,steps)] 
+    spectral_function_down1=[create_matrix(chain_length) for z in range(0,steps)]
     #this creates [ [ [0,0,0] , [0,0,0],, [0,0,0] ] , [0,0,0] , [0,0,0],, [0,0,0] ] ... ], ie one chain_length by chain_length 
     # dimesional create_matrix for each energy. The first index in spectral function refers to what energy we are selcting. 
     #the next two indices refer to which enter in our create_matrix we are selecting.    
-    green_function_up, green_function_down, spectral_function_up, spectral_function_down, spin_up_occup, spin_down_occup = get_self_consistent_green_function(parameters,  energy )
+    green_function_up, green_function_down, spectral_function_up, spectral_function_down, spin_up_occup, spin_down_occup, iter_gf_up, iter_gf_down = get_self_consistent_green_function(parameters,  energy )
+    
+    for r in range(0,parameters.steps):
+        spectral_function_up1[r]=spectral_function_calculator(iter_gf_up[r], parameters)  
 
     magnetisation=[spin_up_occup[i]-spin_down_occup[i] for i in range(0,chain_length)]
     #analytic2=[(2/np.pi)*gamma/((energy[x]-onsite-hubbard_interaction*spin_up_occup[-1]+hubbard_interaction*spin_down_occup[-1]*spin_up_occup[-1])**2+4*gamma**2) for x in range(steps)]   
     print("The magnetisation is ", magnetisation)
     #print(count)
     
+    
+    for i in range(0,chain_length):
+        plt.plot(energy, [ e[i][i] for e in green_function_up]  , color='blue', label='converged gf' ) 
+        #plt.plot(energy, [ -e[i][i] for e in spectral_function_down], color='red')
+        plt.plot(energy, [ e[i][i] for e in iter_gf_up], color='red', label='using initial gf')
+        #plt.plot(energy, dos_spin_up[i] , color='blue', label='spin up DOS' ) 
+        #plt.plot(energy, dos_spin_down[i], color='red', label='spin down DOS')
+#
+   # plt.plot(energy,analytic, color='tomato')
+    #plt.plot(energy,analytic2, color='green')
+    plt.legend(loc='upper right')
+    plt.xlabel("energy")
+    plt.ylabel("Sepctral Function")  
+    plt.show()    
+    
     fig = plt.figure()
-   
+
+    
 
     for i in range(0,chain_length):
-        plt.plot(energy, [ e[i][i] for e in spectral_function_up]  , color='blue' ) 
-        plt.plot(energy, [ -e[i][i] for e in spectral_function_down], color='red')
+        plt.plot(energy, [ e[i][i] for e in spectral_function_up]  , color='blue', label='converged gf' ) 
+        #plt.plot(energy, [ -e[i][i] for e in spectral_function_down], color='red')
+        plt.plot(energy, [ e[i][i] for e in spectral_function_up1], color='red', label='using initial gf')
         #plt.plot(energy, dos_spin_up[i] , color='blue', label='spin up DOS' ) 
         #plt.plot(energy, dos_spin_down[i], color='red', label='spin down DOS')
 #
