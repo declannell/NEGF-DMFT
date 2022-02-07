@@ -133,7 +133,7 @@ def green_lesser_calculator( parameters , green_function, energy):
     for r in range(0, parameters.steps):
         for i in range(0, 1):
             for j in range(0, 1):
-                g_lesser[r][i][j]= -2j*fermi_function( energy[r], parameters)*(green_function[r][i][j]-np.conjugate(green_function[r][j][i]))  
+                g_lesser[r][i][j]= -2*fermi_function( energy[r], parameters)*(green_function[r][i][j]-np.conjugate(green_function[r][j][i]))  
     return g_lesser
 
 def self_energy_calculator(parameters, g_0_up, g_0_down, energy):# this creates the entire energy array at once

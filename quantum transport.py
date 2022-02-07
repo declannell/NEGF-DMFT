@@ -367,6 +367,50 @@ def analytic_gf_2site(parameters):
     plt.ylabel("Green Function")  
     plt.show()
 
+def coupling_matrices(parameters , se_r ):
+    coupling_mat = [ create_matrix( parameters.chain_length ) for r in range ( parameters.steps) ]
+    for r in range( 0 , parameters.steps ):
+        for i in range( parameters.chain_length ):
+            for j in range( parameters.chain_length ):                
+                coupling_mat[r][i][j] = 1j * ( se_r[r][i][j] - np.conjugate( se_r[r][j][i] ) )
+    return coupling_mat
+
+def current_Meir_wingreen(parameters, spectral_function , lesser_gf , left_se_r , right_se_r , energy , v_l , v_r):
+    coupling_right = coupling_matrices(parameters, right_se_r)
+    coupling_left = coupling_matrices(parameters, left_se_r)
+
+    integrand = [ [ 0 for i in range( parameters.chain_length ) for r in range( parameters.steps ) ] ]
+    
+    #print(integrand)
+    
+    for r in range(0 , parameters.steps ):
+        for i in range(0 , parameters.chain_length):
+            for k in range(0 , parameters.chain_length):
+                integrand[i][r]  += ( fermi_function( energy[r] + v_l , parameters) * coupling_left[r][i][k] - fermi_function( energy[r] + v_r , parameters) * coupling_right[r][i][k] ) * spectral_function[r][k][i] + 1j * ( coupling_left[r][i][k] -coupling_right[r][i][k] ) * lesser_gf[r][k][i] 
+
+    trace = [ 0 for r in range(parameters.steps) ]
+    
+    for r in range(0 , parameters.steps ):
+        for i in range(0 , parameters.chain_length):
+            trace[r] +=  integrand[i][r]
+
+    current = trace_integrate( energy , parameters , trace ) 
+    
+    return current
+
+
+def trace_integrate(energy, parameters, trace):
+    current = 0
+    delta_energy = (parameters.e_upper_bound-parameters.e_lower_bound)/parameters.steps
+    
+    for r in range(0,parameters.steps):                
+        current += delta_energy * trace[r]
+    return current
+       
+
+
+
+
     
 def main():
     time_start = time.perf_counter()
@@ -379,6 +423,8 @@ def main():
 
     parameters=Parameters(onsite, gamma, hopping, chain_length, chemical_potential, temperature, steps, e_upper_bound ,e_lower_bound, hubbard_interaction)
 
+    v_l=0
+    v_r=0
 
     energy=[e_lower_bound+(e_upper_bound-e_lower_bound)/steps*x for x in range(steps)]
     green_function_up=[create_matrix(chain_length) for z in range(0,steps)] 
@@ -428,9 +474,30 @@ def main():
     plt.ylabel("Green Function")  
     plt.show()  
     
+    self_energy_left=[create_matrix(chain_length) for r in range(parameters.steps)]
+    self_energy_right=[create_matrix(chain_length)for r in range(parameters.steps)]
+        
+    f= open(r"C:\Users\user\Desktop\Green function code\Green's Function\embedding_self_energy.txt", "r")
+    lines = f.read().split(',')  
+    for r in range(0,parameters.steps):  
+            self_energy_right[r][-1][-1]=float(lines[3+r*5])+1j*float(lines[4+r*5])
+            self_energy_left[r][0][0]=float(lines[1+r*5])+1j*float(lines[2+r*5])  
+    f.close()
+    
+
+    lesser_gf=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)]  
+    for r in range(0, parameters.steps):
+        for i in range(0, parameters.chain_length):
+            for j in range(0, parameters.chain_length):
+                lesser_gf[r][i][j]= -2j*fermi_function( energy[r], parameters)*(green_function_up[r][i][j]-np.conjugate(green_function_up[r][j][i]))  
+
+    
+    current = current_Meir_wingreen( parameters , spectral_function_up , lesser_gf, self_energy_left , self_energy_right , energy, v_l, v_r)
+    
+    print("The current is " , current )
     analytic_gf_1site(parameters)
     time_elapsed = (time.perf_counter() - time_start)
-    print(" The time it took the computation for convergence method 3 is" , time_elapsed)
+    print(" The time it took the computation is" , time_elapsed)
             
 if __name__=="__main__":#this will only run if it is a script and not a import module
     main()
