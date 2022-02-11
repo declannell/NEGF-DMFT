@@ -1,0 +1,128 @@
+
+I initially have from Andrea sigma 2 with DFT paper
+g^< = -2i* fermi * Im[g^{r}]   ==>    [(-0.4037977579330403+0j)]
+
+I change this to the notation of Steffanucci
+g^< =  fermi * Im[g^{r} ]        ==>     (-0.4031408751667009+0j) conclude 2nd order doesnt do much
+
+Now tidy up n^{sigma} functiontidied function gives the same result. not fix every other code with this tidied function. This gives same results.
+
+Remove factor of 2 from the functionn^{sigma} = 1/pi * integral { fermi * spectral ^{sigma} }
+New "correct" result is [(0.21780295113352555+0j)]
+
+The above results are all in the wide band limit. Repeating the calculations with the numerical calculated self energy of the leads. 
+To check my new code with the leads in addition works i consider the old case of the wide band limit. This gives the same result and hence that code should work.
+Since this is the same result I conclude it works and move on from the wide band limit to the self energy calculated numerically to get[(-0.4111906702353494+0j)]
+
+I now change the hopping in the leads to avoid singularities hopping_leads = -0.5 ==> -1.0 ,
+When the hubbard U=0, the magnetisation is [(-0.6024736580744785+0j)]
+
+U=0.3 ==> [(-0.7113050067735314+0j)]
+I think DMFT + leads is all good. try move out of equilibrium. 
+
+I also added a parameters class which scripts have. This causes a slight difference due to the energy containing an imaginary part. 
+Unfortunately it is also slower due to so many function calls I think. 
+This difference can be made as small as we like by making the imaginary component of the energy as small as we like.
+
+
+This section compares the leads + device region for the two methods of getting g^{<}. Both are done in equilibrium so should be exact as I showed analytically in the gf lesser notes.
+I now need to replace g^{<} with g^{lesser} = f(w) * (g^{r} - g^{a})
+runfile('C:/Users/user/Desktop/Green function code/Green\'s Function/makeshift 1.py', wdir='C:/Users/user/Desktop/Green function code/Green\'s Function')
+Reloaded modules: parameters
+In the  1 first DMFT loop the spin occupation is  [(0.19830235506630045+0j)]   [(0.19830235506630045+0j)]
+The difference is  3.7174083285286317 The count is  1
+In the  2 first DMFT loop the spin occupation is  [(0.1463435994884108+0j)]    [(0.1463435994884108+0j)]
+The difference is  2.316105813918754 The count is  2
+In the  3 first DMFT loop the spin occupation is  [(0.14451308030406554+0j)]     [(0.14451308030406554+0j)]
+The difference is  0.25960149960963763 The count is  3 
+In the  4 first DMFT loop the spin occupation is  [(0.14435763632833457+0j)]   [(0.14435763632833457+0j)]
+The difference is  0.010661862465374927 The count is  4
+In the  5 first DMFT loop the spin occupation is  [(0.14434859140921402+0j)]    [(0.14434859140921402+0j)]
+The difference is  0.0008410143653527768 The count is  5
+In the  6 first DMFT loop the spin occupation is  [(0.1443479984961545+0j)]    [(0.1443479984961545+0j)]
+The difference is  4.9966158306880004e-05 The count is  6
+The spin up occupaton probability is  [(0.1443479984961545+0j)]    [(0.1443479984961545+0j)]
+The magnetisation is  [(-0.7113040030076909+0j)]   [(-0.7113040030076909+0j)]
+The current is  0j
+ The time it took the computation is 37.07680379999965
+
+ if we get g^{lesser} = g^{r} Sigma_{tot}^{<} g^{a}
+runfile('C:/Users/user/Desktop/Green function code/Green\'s Function/untitled0.py', wdir='C:/Users/user/Desktop/Green function code/Green\'s Function')
+Reloaded modules: parameters
+In the  1 first DMFT loop the spin occupation is  [(0.19830235506630045+0j)]
+The difference is  3.7174083285286317 The count is  1
+In the  2 first DMFT loop the spin occupation is  [(0.1463435994884108+0j)]
+The difference is  2.316105813918754 The count is  2
+In the  3 first DMFT loop the spin occupation is  [(0.14451308030406554+0j)]
+The difference is  0.25960149960963763 The count is  3
+In the  4 first DMFT loop the spin occupation is  [(0.14435763632833457+0j)]
+The difference is  0.010661862465374927 The count is  4
+In the  5 first DMFT loop the spin occupation is  [(0.14434859140921402+0j)]
+The difference is  0.0008410143653527768 The count is  5
+In the  6 first DMFT loop the spin occupation is  [(0.1443479984961545+0j)]
+The difference is  4.9966158306880004e-05 The count is  6
+The spin up occupaton probability is  [(0.1443479984961545+0j)]
+The magnetisation is  [(-0.7113040030076909+0j)]
+The current is  0j
+ The time it took the computation is 36.990099500000724
+
+I also note when U=0 my results are the same as the analytic case, but both methods give the same results which suggest the error occurs in the calculation of the 2nd order slef energy.
+
+These results are potentially different as I forgot to consider g^{>} in the formula. This is the problem as we need to add another self consistent step by calculating g^{>}. 
+However it would be cheaper to use  g^{>} = g^{<} + g^{r} -g^{a}, which is also valid from the definition of the retarded and advanced green functions. 
+Unfortunately this still gives different results. However I changed the integrating function which seemed to be causing the issue. 
+
+This is the results for 81 steps
+g^{lesser} = g^{r} Sigma_{tot}^{<} g^{a}
+C:\Users\user\Desktop\Green function code\Green's Function\makeshift 2.py:185: UserWarning: Dear future Declan,  Please change this for when you do for than 1 orbital in the scattering region. Your sincerely, past Declan 
+  warnings.warn('Dear future Declan,  Please change this for when you do for than 1 orbital in the scattering region. Your sincerely, past Declan ')
+In the  1 first DMFT loop the spin occupation is  [(0.19830235506630045+0j)]
+The difference is  3.7174083285286317 The count is  1
+In the  2 first DMFT loop the spin occupation is  [(0.14937340245535102+0j)]
+The difference is  2.263593076357907 The count is  2
+In the  3 first DMFT loop the spin occupation is  [(0.14698766149000275+0j)]
+The difference is  0.25319552658932976 The count is  3
+In the  4 first DMFT loop the spin occupation is  [(0.14687278727289707+0j)]
+The difference is  0.012619501083769968 The count is  4
+In the  5 first DMFT loop the spin occupation is  [(0.14686725941302792+0j)]
+The difference is  0.0006081962005577424 The count is  5
+In the  6 first DMFT loop the spin occupation is  [(0.14686699341480342+0j)]
+The difference is  2.9268291588113726e-05 The count is  6
+The spin up occupaton probability is  [(0.14686699341480342+0j)]
+ The difference between the two methods in the lesser gf is  1.874739319764657e-11
+The magnetisation is  [(-0.7062660131703931+0j)]   or i fiddled with the energy to get [(-0.7062686900158412+0j)] 
+The current is  0j
+ The time it took the computation is 35.1764531000008
+
+
+g^{lesser} = f(w) * (g^{r} - g^{a})
+runfile('C:/Users/user/Desktop/Green function code/Green\'s Function/untitled1.py', wdir='C:/Users/user/Desktop/Green function code/Green\'s Function')
+Reloaded modules: parameters, leads_self_energy
+In the  1 first DMFT loop the spin occupation is  [(0.19830235506630045+0j)]
+The difference is  3.7174083285286317 The count is  1
+In the  2 first DMFT loop the spin occupation is  [(0.14937340245535105+0j)]
+The difference is  2.2635930763579064 The count is  2
+In the  3 first DMFT loop the spin occupation is  [(0.14698766149000275+0j)]
+The difference is  0.25319552658933375 The count is  3
+In the  4 first DMFT loop the spin occupation is  [(0.1468727872728971+0j)]
+The difference is  0.012619501083765972 The count is  4
+In the  5 first DMFT loop the spin occupation is  [(0.14686725941302792+0j)]
+The difference is  0.0006081962005626274 The count is  5
+In the  6 first DMFT loop the spin occupation is  [(0.14686699341480342+0j)]
+The difference is  2.9268291587225548e-05 The count is  6
+The spin up occupaton probability is  [(0.14686699341480342+0j)]
+The magnetisation is  [(-0.7062660131703931+0j)]   or i fiddled with the energy to get [(-0.7062686900158412+0j)]      
+The current is  0j
+ The time it took the computation is 29.823001799999474
+
+Variation between leads+ device which uses fluctation dissapation, and the no fluctuation dissapation is due to the imaginary part of the energy.
+
+
+I also should calculate the occupation using the lesser gf instead of the spectral function.  This gives a magnetisation of 
+[(-0.7062686900263124+8.584466428074346e-12j)] which agrees to 10 decimal places. Again the error is probably due to the imaginary part of the energy.
+
+
+I can now try driving the system out of equilibrium.  
+
+
+

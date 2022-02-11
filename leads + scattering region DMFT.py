@@ -4,16 +4,12 @@ import numpy as np
 import math
 from dataclasses import dataclass
 import time
-import csv
 
 class StaticNumber:
      i = 0
      
      def add_one(self):
          self.i+=1
-
-
-
 
 class HubbardHamiltonian: 
     onsite: float
@@ -25,11 +21,7 @@ class HubbardHamiltonian:
     effective_matrix=None
     self_energy_left=None
     self_energy_right=None
-    
-
-
-
-    
+   
     def __init__(self, parameters  ):
         self.onsite , self.hopping , self.chain_length , self.gamma , self.hubbard_interaction = parameters.onsite , parameters.hopping , parameters.chain_length , parameters.gamma , parameters.hubbard_interaction
         self.matrix=create_matrix(self.chain_length)
@@ -37,32 +29,10 @@ class HubbardHamiltonian:
         self.self_energy_left=[create_matrix(self.chain_length) for r in range(parameters.steps)]
         self.self_energy_right=[create_matrix(self.chain_length)for r in range(parameters.steps)]
         
-        energy = [0 for i in range(parameters.steps)]
-        f= open(r"C:\Users\user\Desktop\Green function code\Green's Function\embedding_self_energy.txt", "r")
-        lines = f.read().split(',')  
-        for r in range(0,parameters.steps):  
-            energy[r] = float( lines[ 5 * r ] )
-            self.self_energy_right[r][-1][-1]=float(lines[3+r*5])+1j*float(lines[4+r*5])
-            self.self_energy_left[r][0][0]=float(lines[1+r*5])+1j*float(lines[2+r*5])  
-        f.close()
+
+        self.self_energy_left , self.self_energy_right = self.embedding_self_energy(parameters)
         
-        """
-        static = StaticNumber()
-        print("before if statement " , static.i)
         
-        if( static.i == 0):
-            plt.plot(energy, [ e[-1][-1].real for e in self.self_energy_right]  , color='blue', label='real self energy' ) 
-            plt.plot(energy, [ e[-1][-1].imag for e in self.self_energy_right], color='red', label='imaginary self energy')
-            plt.title("embedding self energy")
-   # plt.plot(energy,analytic, color='tomato')
-    #plt.plot(energy,analytic2, color='green')
-            plt.legend(loc='upper right')
-            plt.xlabel("energy")
-            plt.ylabel("Sepctral Function")  
-            plt.show()
-            static.add_one()
-            print("after if statement " , static.i)
-        """
          
         for r in range(0,parameters.steps):
             for i in range(0,self.chain_length-1):
@@ -72,13 +42,38 @@ class HubbardHamiltonian:
                 self.matrix[i][i]=self.onsite
                 for j in range(0,self.chain_length):  
                     self.efffective_matrix[r][i][j]=self.matrix[i][j] + self.self_energy_right[r][i][j] + self.self_energy_left[r][i][j]
+
+    def embedding_self_energy(self , parameters):
+        se_emb_l=[create_matrix(self.chain_length) for r in range(parameters.steps)]
+        se_emb_r=[create_matrix(self.chain_length)for r in range(parameters.steps)]
+        
+        f= open(r"C:\Users\user\Desktop\Green function code\Green's Function\embedding_self_energy.txt", "r")
+        lines = f.read().split(',')  
+        for r in range(0,parameters.steps):  
+            se_emb_r[r][-1][-1]=float(lines[3+r*5])+1j*float(lines[4+r*5])
+            se_emb_l[r][0][0]=float(lines[1+r*5])+1j*float(lines[2+r*5])  
+        f.close()
+        
+        return se_emb_l , se_emb_r
+    
+    def plot_embedding_self_energy( self , energy ):
+            plt.plot(energy, [ e[-1][-1].real for e in self.self_energy_right]  , color='blue', label='real self energy' ) 
+            plt.plot(energy, [ e[-1][-1].imag for e in self.self_energy_right], color='red', label='imaginary self energy')
+            plt.title("embedding self energy")
+   # plt.plot(energy,analytic, color='tomato')
+    #plt.plot(energy,analytic2, color='green')
+            plt.legend(loc='upper right')
+            plt.xlabel("energy")
+            plt.ylabel("embedding self energy")  
+            plt.show()
+            
+            
     
     def print(self, num):
         for i in range(0,self.chain_length):
             row_string = " ".join((str(r).rjust(5, " ") for r in self.efffective_matrix[num][i])) #rjust adds padding, join connects them all
             print(row_string)
             
-
 @dataclass #creates init function for me
 class Parameters:
     onsite: float
@@ -92,7 +87,6 @@ class Parameters:
     e_lower_bound: float
     hubbard_interaction: float
 
-
 def fermi_function(energy, parameters):
     if(parameters.temperature==0):
         if(energy < parameters.chemical_potential):
@@ -101,31 +95,21 @@ def fermi_function(energy, parameters):
             return 0
     else:
         return 1/(1+math.exp((energy-parameters.chemical_potential)/parameters.temperature))
-    
-def integrating_function(pdos, energy, parameters):
-    delta_energy = (parameters.e_upper_bound-parameters.e_lower_bound)/parameters.steps
-    result=0
-    for r in range(0,parameters.steps):
-        result=delta_energy * fermi_function(energy[r], parameters) * pdos[r] +result#pdos=PDOS
-    
-    return result
 
 def integrate( parameters,   gf_1, gf_2, gf_3, r):# in this function, the green functions are 1d arrays in energy. this is becasue we have passed the diagonal component of the green fun( lesser, or retarded) 
     delta_energy = (parameters.e_upper_bound-parameters.e_lower_bound)/parameters.steps
     result=0
+    energy = [ parameters.e_lower_bound + (parameters.e_upper_bound - parameters.e_lower_bound)/parameters.steps*x for x in range(parameters.steps)]    
         #if i=0, j=0 this corresponds the begining of the energy array, so energies of -20, -20. this means our third green function has an energy of -40 + E[r]. We approximated earlier that
         #the green function is zero outside (-20,20) so E(r)=20 for the integral to be non-zero and hence r=steps. So i+j+r has a minimum value of steps. By a similiar logic, it has a max value of 2*steps.
         # for the range inbetween the index of the third green function is (i+j+r) % steps
-
-    for i in range(0,parameters.steps):
-        for j in range(0,parameters.steps):
-            if ( ( (i+j+r) >= parameters.steps ) and ( (i+j+j) <= 2*parameters.steps) ):
-                
-                result=(delta_energy/(2*np.pi))**2 * gf_1[i] * gf_2[j] * gf_3[ (i+j+r)%parameters.steps ] +result
-
+    for i in range( 0  ,parameters.steps ):
+        for j in range( 0, parameters.steps ):
+            if ( ( (energy[i] + energy[j] - energy[r] ) >=  parameters.e_lower_bound ) and ( (energy[i] + energy[j] - energy[r] ) <= parameters.e_lower_bound )   ):             
+                result = ( delta_energy / ( 2 * np.pi))**2 * gf_1[i] * gf_2[j] * gf_3[ (i+j-r) ] +result
             else:
-                result=result
-                
+                result = result    
+              
     return result
 
 def green_lesser_calculator( parameters , green_function, energy):
@@ -133,19 +117,13 @@ def green_lesser_calculator( parameters , green_function, energy):
     for r in range(0, parameters.steps):
         for i in range(0, 1):
             for j in range(0, 1):
-                g_lesser[r][i][j]= -2*fermi_function( energy[r], parameters)*(green_function[r][i][j]-np.conjugate(green_function[r][j][i]))  
+                g_lesser[r][i][j]= fermi_function( energy[r], parameters)*(green_function[r][i][j]-np.conjugate(green_function[r][j][i]))  
     return g_lesser
 
 def self_energy_calculator(parameters, g_0_up, g_0_down, energy):# this creates the entire energy array at once
-    self_energy=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)] 
-    g_lesser_up=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)]  
-    g_lesser_down=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)]    
-    
-
-    g_lesser_up=green_lesser_calculator(parameters,  g_0_up, energy )    
+    self_energy=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)]   
+    g_lesser_up=green_lesser_calculator(parameters,  g_0_up, energy )     
     g_lesser_down=green_lesser_calculator(parameters,  g_0_down, energy )
- 
-
     for r in range(0,parameters.steps):# the are calculating the self energy sigma_{ii}(E) for each discretized energy. To do this we pass the green_fun_{ii} for all energies as we need to integrate over all energies in the integrate function
         for i in range(0, 1):
             self_energy[r][i][i]=  parameters.hubbard_interaction**2*( integrate( parameters, [ e[i][i] for e in g_0_up] , [ e[i][i] for e in g_0_down]  , [ e[i][i] for e in g_lesser_down]   , r )  )
@@ -154,7 +132,6 @@ def self_energy_calculator(parameters, g_0_up, g_0_down, energy):# this creates 
             self_energy[r][i][i]+= parameters.hubbard_interaction**2*( integrate( parameters, [ e[i][i] for e in g_lesser_up] , [ e[i][i] for e in g_lesser_down]  , [np.conjugate( e[i][i]) for e in g_0_down]  ,r  ) ) #fix advanced green function
 
     return self_energy
-
 
 def spectral_function_calculator( green_function , parameters):
     spectral_function=create_matrix(parameters.chain_length)
@@ -165,7 +142,6 @@ def spectral_function_calculator( green_function , parameters):
   
   
     
-
 def create_matrix(size):
     return [[0.0 for x in range(size)] for y in range(size)]
           
@@ -182,10 +158,13 @@ def green_function_calculator( hamiltonian , self_energy , parameters, energy, e
     
     return la.inv(inverse_green_function, overwrite_a=False, check_finite=True)    
     
-
 def get_spin_occupation(spectral_function, energy, parameters):
-    
-    x= 1/(2*np.pi)*integrating_function( spectral_function ,energy, parameters) 
+    delta_energy = (parameters.e_upper_bound-parameters.e_lower_bound)/parameters.steps
+    result=0
+    for r in range(0,parameters.steps):
+        result = (delta_energy) * fermi_function(energy[r], parameters) * spectral_function[r] +result#pdos=PDOS
+
+    x= 1/(np.pi)*result 
     return x, 1-x
 
 def inner_dmft(parameters, gf_int_up, gf_int_down, energy): #this solves the impurity problem self consistently
@@ -249,7 +228,7 @@ def inner_dmft(parameters, gf_int_up, gf_int_down, energy): #this solves the imp
                         old_green_function[r]=g_local_up[r][0][0]
 
             #difference=max(differencelist)
-            difference=max(differencelist)
+            difference=0
             #print("The inner difference is " , difference)
             #print("The inner  mean difference is ", np.mean(differencelist)) 
 
@@ -283,7 +262,7 @@ def gf_dmft(parameters, energy): # this function does not solve the impurity gre
     old_green_function=[[[1.0+1j for x in range(parameters.chain_length)] for y in range(parameters.chain_length)] for z in range(0,parameters.steps)] 
     difference=100.0
     count=0
-    while (difference>0.001 and count < 10) :
+    while (difference>0.0001 and count < 10) :
         count+=1
 
         for r in range(0,parameters.steps):#this initially creates the non-interacting green functions. It then updates using a diagonal self energy.
@@ -367,10 +346,54 @@ def analytic_gf_2site(parameters):
     plt.ylabel("Green Function")  
     plt.show()
 
+def coupling_matrices(parameters , se_r ):
+    coupling_mat = [ create_matrix( parameters.chain_length ) for r in range ( parameters.steps) ]
+    for r in range( 0 , parameters.steps ):
+        for i in range( parameters.chain_length ):
+            for j in range( parameters.chain_length ):                
+                coupling_mat[r][i][j] = 1j * ( se_r[r][i][j] - np.conjugate( se_r[r][j][i] ) )
+    return coupling_mat
+
+def current_Meir_wingreen(parameters, spectral_function , lesser_gf , left_se_r , right_se_r , energy , v_l , v_r):
+    coupling_right = coupling_matrices(parameters, right_se_r)
+    coupling_left = coupling_matrices(parameters, left_se_r)
+
+    integrand = [ [ 0 for i in range( parameters.chain_length ) for r in range( parameters.steps ) ] ]
+    
+    #print(integrand)
+    
+    for r in range(0 , parameters.steps ):
+        for i in range(0 , parameters.chain_length):
+            for k in range(0 , parameters.chain_length):
+                integrand[i][r]  += ( fermi_function( energy[r] + v_l , parameters) * coupling_left[r][i][k] - fermi_function( energy[r] + v_r , parameters) * coupling_right[r][i][k] ) * spectral_function[r][k][i] + 1j * ( coupling_left[r][i][k] -coupling_right[r][i][k] ) * lesser_gf[r][k][i] 
+
+    trace = [ 0 for r in range(parameters.steps) ]
+    
+    for r in range(0 , parameters.steps ):
+        for i in range(0 , parameters.chain_length):
+            trace[r] +=  integrand[i][r]
+
+    current = trace_integrate( energy , parameters , trace ) 
+    
+    return current
+
+
+def trace_integrate(energy, parameters, trace):
+    current = 0
+    delta_energy = (parameters.e_upper_bound-parameters.e_lower_bound)/parameters.steps
+    
+    for r in range(0,parameters.steps):                
+        current += delta_energy * trace[r]
+    return current
+       
+
+
+
+
     
 def main():
     time_start = time.perf_counter()
-    onsite, gamma, hopping, chemical_potential, temperature , hubbard_interaction = 3.0 , 2.0 , -1.0 ,0.0, 0.0 , 0.0
+    onsite, gamma, hopping, chemical_potential, temperature , hubbard_interaction = 1.0 , 2.0 , -1.0 ,0.0, 0.0 , 0.3
     chain_length=1
     steps=81 #number of energy points
     e_upper_bound , e_lower_bound = 10.0 , -10.0
@@ -379,6 +402,8 @@ def main():
 
     parameters=Parameters(onsite, gamma, hopping, chain_length, chemical_potential, temperature, steps, e_upper_bound ,e_lower_bound, hubbard_interaction)
 
+    v_l=0
+    v_r=0
 
     energy=[e_lower_bound+(e_upper_bound-e_lower_bound)/steps*x for x in range(steps)]
     green_function_up=[create_matrix(chain_length) for z in range(0,steps)] 
@@ -428,9 +453,30 @@ def main():
     plt.ylabel("Green Function")  
     plt.show()  
     
+    self_energy_left=[create_matrix(chain_length) for r in range(parameters.steps)]
+    self_energy_right=[create_matrix(chain_length)for r in range(parameters.steps)]
+        
+    f= open(r"C:\Users\user\Desktop\Green function code\Green's Function\embedding_self_energy.txt", "r")
+    lines = f.read().split(',')  
+    for r in range(0,parameters.steps):  
+            self_energy_right[r][-1][-1]=float(lines[3+r*5])+1j*float(lines[4+r*5])
+            self_energy_left[r][0][0]=float(lines[1+r*5])+1j*float(lines[2+r*5])  
+    f.close()
+    
+
+    lesser_gf=[create_matrix(parameters.chain_length) for z in range(0,parameters.steps)]  
+    for r in range(0, parameters.steps):
+        for i in range(0, parameters.chain_length):
+            for j in range(0, parameters.chain_length):
+                lesser_gf[r][i][j]= -2j*fermi_function( energy[r], parameters)*(green_function_up[r][i][j]-np.conjugate(green_function_up[r][j][i]))  
+
+    
+    current = current_Meir_wingreen( parameters , spectral_function_up , lesser_gf, self_energy_left , self_energy_right , energy, v_l, v_r)
+    
+    print("The current is " , current )
     analytic_gf_1site(parameters)
     time_elapsed = (time.perf_counter() - time_start)
-    print(" The time it took the computation for convergence method 3 is" , time_elapsed)
+    print(" The time it took the computation is" , time_elapsed)
             
 if __name__=="__main__":#this will only run if it is a script and not a import module
     main()
