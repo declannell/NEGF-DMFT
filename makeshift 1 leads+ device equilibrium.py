@@ -19,7 +19,7 @@ class HubbardHamiltonian:
    
     def __init__(self  ):
         self.matrix = create_matrix(parameters.chain_length())
-        self.efffective_matrix = [create_matrix(parameters.chain_length()) for r in range(parameters.steps())]
+        self.effective_matrix = [create_matrix(parameters.chain_length()) for r in range(parameters.steps())]
         self.self_energy_left = [create_matrix(parameters.chain_length()) for r in range(parameters.steps())]
         self.self_energy_right = [create_matrix(parameters.chain_length())for r in range(parameters.steps())]
         
@@ -35,7 +35,7 @@ class HubbardHamiltonian:
             for i in range(0,parameters.chain_length()):
                 self.matrix[i][i]=parameters.onsite()
                 for j in range(0,parameters.chain_length()):  
-                    self.efffective_matrix[r][i][j]=self.matrix[i][j] + self.self_energy_right[r][i][j] + self.self_energy_left[r][i][j]
+                    self.effective_matrix[r][i][j]=self.matrix[i][j] + self.self_energy_right[r][i][j] + self.self_energy_left[r][i][j]
 
     def embedding_self_energy(self ):
         se_emb_l=[create_matrix(parameters.chain_length()) for r in range(parameters.steps())]
@@ -79,22 +79,23 @@ def fermi_function(energy):
     else:
         return 1/(1+math.exp((energy-parameters.chemical_potential())/parameters.temperature()))
 
+def integrate(    gf_1, gf_2, gf_3, r):# in this function, the green functions are 1d arrays in energy. this is becasue we have passed the diagonal component of the green fun( lesser, or retarded) 
+    delta_energy = (parameters.e_upper_bound() - parameters.e_lower_bound() )/parameters.steps()
+    result=0
+        #if i=0, j=0 this corresponds the begining of the energy array, so energies of -20, -20. this means our third green function has an energy of -40 + E[r]. We approximated earlier that
+        #the green function is zero outside (-20,20) so E(r)=20 for the integral to be non-zero and hence r=steps. So i+j+r has a minimum value of steps. By a similiar logic, it has a max value of 2*steps.
+        # for the range inbetween the index of the third green function is (i+j+r) 
 
+    for i in range(0,parameters.steps() ):
+        for j in range(0,parameters.steps() ):
+            #print("i = " , i , " j = ", j , " r = ", r)
+            if ( ( (i+j-r) >= 0 ) and ( (i+j-r) < parameters.steps() ) ):
+                
+                result=(delta_energy/(2*np.pi))**2 * gf_1[i] * gf_2[j] * gf_3[ (i+j-r) ] +result
 
-def integrate(  gf_1, gf_2, gf_3, r):# in this function, the green functions are 1d arrays in energy. this is becasue we have passed the diagonal component of the green fun( lesser, or retarded) 
-    delta_energy = ( parameters.e_upper_bound() - parameters.e_lower_bound() ) / parameters.steps()
-    result = 0
-    energy = [ parameters.energy()[r].real for r in range(parameters.steps())]
-    
-    
-        #if i=0, j=0 this corresponds the begining of the energy array, so energies of -20, -20. this means our third green function has an energy of -40 - E[r]. We approximated earlier that
-        #the green function is zero outside (-20,20) so E(r)=-20 for the integral to be non-zero and hence r=0. This leads us to the condition in our if statement.
-    for i in range( 0  ,parameters.steps() ):
-        for j in range( 0, parameters.steps() ):
-            if ( ( (energy[i] + energy[j] - energy[r] ) >=  parameters.e_lower_bound() ) and ( (energy[i] + energy[j] - energy[r] ) <= parameters.e_lower_bound() )   ):             
-                result = ( delta_energy / ( 2 * np.pi))**2 * gf_1[i] * gf_2[j] * gf_3[ (i+j-r) ] +result
             else:
-                result = result        
+                result=result
+                 
     return result
 
 def green_lesser_local(  green_function ):
@@ -102,7 +103,7 @@ def green_lesser_local(  green_function ):
     for r in range(0, parameters.steps()):
         for i in range(0, 1):
             for j in range(0, 1):
-                g_lesser[r][i][j]= fermi_function( parameters.energy()[r])*(green_function[r][i][j]-np.conjugate(green_function[r][j][i]))  
+                g_lesser[r][i][j]= - fermi_function( parameters.energy()[r])*(green_function[r][i][j]-np.conjugate(green_function[r][j][i]))  
     return g_lesser
 
 def self_energy_calculator( g_0_up, g_0_down ):# this creates the entire parameters.energy() array at once
@@ -135,27 +136,29 @@ def green_function_calculator( hamiltonian , self_energy , energy,  energy_step 
     for i in range(0,parameters.chain_length()):
            for j in range(0,parameters.chain_length()): 
                if(i==j):                
-                   inverse_green_function[i][j] = - hamiltonian.efffective_matrix[energy_step][i][j] - self_energy[i][j] + energy
+                   inverse_green_function[i][j] = - hamiltonian.effective_matrix[energy_step][i][j] - self_energy[i][j] + energy
                else:
-                   inverse_green_function[i][j] = - hamiltonian.efffective_matrix[energy_step][i][j]
+                   inverse_green_function[i][j] = - hamiltonian.effective_matrix[energy_step][i][j]
         #print(inverse_green_function[i])
     #hamiltonian.print()
     
     return la.inv(inverse_green_function, overwrite_a=False, check_finite=True)    
     
-def get_spin_occupation(spectral_function, energy):
+def get_spin_occupation(spectral_function_up , spectral_function_down ):
     delta_energy = (parameters.e_upper_bound()-parameters.e_lower_bound())/parameters.steps()
-    result=0
+    result_up ,result_down = 0 , 0
     for r in range(0,parameters.steps()):
-        result = (delta_energy) * fermi_function(parameters.energy()[r]) * spectral_function[r] +result#pdos=PDOS
-
-    x= 1/(np.pi)*result 
-    return x, 1-x
+        result_up = (delta_energy) * fermi_function(parameters.energy()[r]) * spectral_function_up[r] +result_up#pdos=PDOS
+        result_down = (delta_energy) * fermi_function(parameters.energy()[r]) * spectral_function_down[r] +result_down
+    x = 1/(np.pi)*result_up
+    y = 1/(np.pi)*result_down
+    return x, y
 
 def inner_dmft( gf_int_up, gf_int_down): #this solves the impurity problem self consistently
     g_local_up=[create_matrix(1) for i in range(parameters.steps())]#computationally this is a pointer to a pointer which contain g_local. This must be inefficient computationally.
     g_local_down=[create_matrix(1) for i in range(parameters.steps())]
     local_spectral_up=[create_matrix(1) for i in range(parameters.steps())]
+    local_spectral_down=[create_matrix(1) for i in range(parameters.steps())]
     self_energy_up=[create_matrix(parameters.chain_length()) for z in range(0,parameters.steps())] 
     self_energy_down=[create_matrix(parameters.chain_length()) for z in range(0,parameters.steps())] 
     spin_up_occup , spin_down_occup = [ 0.0 for x in range(0, parameters.chain_length())] , [ 0.0 for x in range(0, parameters.chain_length())]
@@ -182,24 +185,24 @@ def inner_dmft( gf_int_up, gf_int_down): #this solves the impurity problem self 
                                 
         old_green_function=[0 for z in range(0,parameters.steps())] 
         difference=100.0
-        while(difference>0.0001):#this is solving the impurity problem self consistently which in principle should be correct
+        while(difference>0.000001):#this is solving the impurity problem self consistently which in principle should be correct
             #print(g_local_up)
             #to not solve the impurity problem self consistently we should set difference =0 so only 1 while loop occurs
             for r in range(0,parameters.steps()):
                 local_spectral_up[r][0][0]=1j*(g_local_up[r][0][0]-np.conjugate(g_local_up[r][0][0]))
-
+                local_spectral_down[r][0][0]=1j*(g_local_down[r][0][0]-np.conjugate(g_local_down[r][0][0]))
             #print(local_spectral_up)
-            local_spin_up , local_spin_down = get_spin_occupation([ e[0][0] for e in local_spectral_up], parameters.energy())
+            local_spin_up , local_spin_down = get_spin_occupation([ e[0][0] for e in local_spectral_up],[ e[0][0] for e in local_spectral_down])
             #print("The spin occupancy is ", local_spin_up, " atom ", i)
             
             #(g_local_up)
             local_sigma_up=self_energy_calculator( g_local_up, g_local_down )
             local_sigma_down=self_energy_calculator( g_local_down, g_local_up )
-            
+            #print(local_sigma_up)
             for r in range(0,parameters.steps()):
                  local_sigma_up[r][0][0]+=parameters.hubbard_interaction()*local_spin_down
                  local_sigma_down[r][0][0]+=parameters.hubbard_interaction()*local_spin_up
-                 
+            """
                  g_initial_up[r]=1/((1/g_local_up[r][0][0])+local_sigma_up[r][0][0])# this is getting the new dynamical mean field
                  g_initial_down[r]=1/((1/g_local_down[r][0][0])+local_sigma_down[r][0][0])
                  
@@ -210,7 +213,7 @@ def inner_dmft( gf_int_up, gf_int_down): #this solves the impurity problem self 
                         differencelist[r]=abs(g_local_up[r][0][0].real-old_green_function[r].real)
                         differencelist[n+r]=abs(g_local_up[r][0][0].imag-old_green_function[r].imag)
                         old_green_function[r]=g_local_up[r][0][0]
-
+            """
             #difference=max(differencelist)
             difference=0
             #print("The inner difference is " , difference)
@@ -242,7 +245,7 @@ def gf_dmft(): # this function does not solve the impurity green function self c
     old_green_function=[[[1.0+1j for x in range(parameters.chain_length())] for y in range(parameters.chain_length())] for z in range(0,parameters.steps())] 
     difference=100.0
     count=0
-    while (difference>0.0001 and count < 10) :
+    while (difference>0.0000001 and count < 15) :
         count+=1
 
         for r in range(0,parameters.steps()):#this initially creates the non-interacting green functions. It then updates using a diagonal self parameters.energy().
@@ -271,8 +274,10 @@ def gf_dmft(): # this function does not solve the impurity green function self c
     for i in range(0, parameters.chain_length()):
         fig = plt.figure()
         
-        plt.plot(parameters.energy(), [e[i][i].imag for e in self_energy_up], color='blue', label='imaginary self .energy' ) 
+        plt.plot(parameters.energy(), [e[i][i].imag for e in self_energy_up], color='blue', label='imaginary self energy' ) 
         plt.plot(parameters.energy(), [e[i][i].real for e in self_energy_up] , color='red' , label='real self energy') 
+
+        
         plt.title("Many-body self energy")
         plt.legend(loc='upper right')
         plt.xlabel("energy")
@@ -323,51 +328,6 @@ def analytic_gf_2site():
     plt.xlabel("energy")
     plt.ylabel("Green Function")  
     plt.show()
-
-def coupling_matrices( se_r ):
-    coupling_mat = [ create_matrix( parameters.chain_length() ) for r in range ( parameters.steps()) ]
-    for r in range( 0 , parameters.steps() ):
-        for i in range( parameters.chain_length() ):
-            for j in range( parameters.chain_length() ):                
-                coupling_mat[r][i][j] = 1j * ( se_r[r][i][j] - np.conjugate( se_r[r][j][i] ) )
-    return coupling_mat
-
-def current_Meir_wingreen( spectral_function , lesser_gf , left_se_r , right_se_r ):
-    coupling_right = coupling_matrices( right_se_r)
-    coupling_left = coupling_matrices( left_se_r)
-
-    integrand = [ [ 0 for i in range( parameters.chain_length() ) for r in range( parameters.steps() ) ] ]
-    
-    #print(integrand)
-    
-    for r in range(0 , parameters.steps() ):
-        for i in range(0 , parameters.chain_length()):
-            for k in range(0 , parameters.chain_length()):
-                integrand[i][r]  += ( fermi_function( parameters.energy()[r] + parameters.voltage_l() ) * coupling_left[r][i][k] - fermi_function( parameters.energy()[r] + parameters.voltage_r() ) * coupling_right[r][i][k] ) * spectral_function[r][k][i] + 1j * ( coupling_left[r][i][k] -coupling_right[r][i][k] ) * lesser_gf[r][k][i] 
-
-    trace = [ 0 for r in range(parameters.steps()) ]
-    
-    for r in range(0 , parameters.steps() ):
-        for i in range(0 , parameters.chain_length()):
-            trace[r] +=  integrand[i][r]
-
-    current = trace_integrate( trace ) 
-    
-    return current
-
-
-def trace_integrate( trace):
-    current = 0
-    delta_energy = (parameters.e_upper_bound()-parameters.e_lower_bound())/parameters.steps()
-    
-    for r in range(0,parameters.steps()):                
-        current += delta_energy * trace[r]
-    return current
-       
-
-
-
-
     
 def main():
     time_start = time.perf_counter()
@@ -375,7 +335,7 @@ def main():
     spin_up_occup , spin_down_occup = [ 0.0 for x in range(0, parameters.chain_length())] , [ 1.0 for x in range(0, parameters.chain_length())]
 
  
-    green_function_up=[create_matrix(parameters.chain_length()) for z in range(0,parameters.steps())] 
+    green_function_up1=[create_matrix(parameters.chain_length()) for z in range(0,parameters.steps())] 
     green_function_down=[create_matrix(parameters.chain_length()) for z in range(0,parameters.steps())]
     
     spectral_function_up=[create_matrix(parameters.chain_length()) for z in range(0,parameters.steps())] 
@@ -389,35 +349,41 @@ def main():
     #analytic2=[(2/np.pi)*gamma/((parameters.energy()[x]-onsite-hubbard_interaction*spin_up_occup[-1]+hubbard_interaction*spin_down_occup[-1]*spin_up_occup[-1])**2+4*gamma**2) for x in range(steps)]   
     print("The magnetisation is ", magnetisation)
     #print(count)
+    f= open(r"C:\Users\user\Desktop\Green function code\Green's Function\green_function_not_FD.txt", "r")
+    lines = f.read().split(',')  
+    for r in range(0,parameters.steps()):  
+            green_function_up1[r][0][0]=float(lines[r*2])+1j*float(lines[1+r*2]) 
+    f.close()
+    difference = 0
     
+    for r in range(0 , parameters.steps() ):
+        if (  abs(green_function_up1[r][0][0] - green_function_up[r][0][0]) > difference ):
+            difference = abs(green_function_up1[r][0][0] - green_function_up[r][0][0]) 
+            i= r
+            
+    print( " the difference is ", difference )
+    print(" the problematic energy steps is " , i )
+    #print(green_function_up1[48][0][0] ,  green_function_up[48][0][0])
     fig = plt.figure()
    
-    """
-    for i in range(0,chain_length):
-        plt.plot(parameters.energy(), [ e[i][i] for e in spectral_function_up]  , color='blue' , label='Spectral up' ) 
-        plt.plot(parameters.energy(), [ -e[i][i] for e in spectral_function_down], color='red', label='Spectral down')
-        #plt.plot(parameters.energy(), dos_spin_up[i] , color='blue', label='spin up DOS' ) 
-        #plt.plot(parameters.energy(), dos_spin_down[i], color='red', label='spin down DOS')
-#   
-   # plt.plot(parameters.energy(),analytic, color='tomato')
-    #plt.plot(parameters.energy(),analytic2, color='green')
-    plt.title("Converged Spectral function")
-    plt.legend(loc='upper right')
-    plt.xlabel("energy")
-    plt.ylabel("Sepctral Function")  
-    plt.show()
-    """
-    for i in range(0, parameters.chain_length() ):
 
+    for i in range(0, parameters.chain_length() ):
+        plt.plot(parameters.energy(), [ e[i][i].real for e in green_function_up1]  , color='red' , label='Real Green up' ) 
+        plt.plot(parameters.energy(), [ e[i][i].imag for e in green_function_up1], color='blue', label='Imaginary Green function')
         plt.plot(parameters.energy(), [ e[i][i].real for e in green_function_up]  , color='red' , label='Real Green up' ) 
         plt.plot(parameters.energy(), [ e[i][i].imag for e in green_function_up], color='blue', label='Imaginary Green function')
         #plt.plot(parameters.energy(), dos_spin_up[i] , color='blue', label='spin up DOS' ) 
         #plt.plot(parameters.energy(), dos_spin_down[i], color='red', label='spin down DOS')
 #   
+
+
+    
    # plt.plot(parameters.energy(),analytic, color='tomato')
     #plt.plot(parameters.energy(),analytic2, color='green')
+    #plt.xlim(1, 2)
+    #plt.ylim(-3.5 , 0.1)
     plt.title("Converged Green function")
-    #plt.legend(loc='upper right')
+    plt.legend(loc='upper right')
     plt.xlabel("energy")
     plt.ylabel("Green Function")  
     plt.show()  
@@ -425,29 +391,13 @@ def main():
     self_energy_left=[create_matrix(parameters.chain_length()) for r in range(parameters.steps())]
     self_energy_right=[create_matrix(parameters.chain_length())for r in range(parameters.steps())]
         
-    f= open(r"C:\Users\user\Desktop\Green function code\Green's Function\embedding_self_energy.txt", "r")
-    lines = f.read().split(',')  
-    for r in range(0,parameters.steps()):  
-            self_energy_right[r][-1][-1]=float(lines[3+r*5])+1j*float(lines[4+r*5])
-            self_energy_left[r][0][0]=float(lines[1+r*5])+1j*float(lines[2+r*5])  
-    f.close()
+    
     
 
-    lesser_gf=[create_matrix(parameters.chain_length()) for z in range(0,parameters.steps())]  
-    for r in range(0, parameters.steps()):
-        for i in range(0, parameters.chain_length()):
-            for j in range(0, parameters.chain_length()):
-                lesser_gf[r][i][j]= fermi_function( parameters.energy()[r])*(green_function_up[r][i][j]-np.conjugate(green_function_up[r][j][i]))  
-
     
-    current = current_Meir_wingreen( spectral_function_up , lesser_gf, self_energy_left , self_energy_right )
-    
-    print("The current is " , current )
     analytic_gf_1site()
     time_elapsed = (time.perf_counter() - time_start)
     print(" The time it took the computation is" , time_elapsed)
             
 if __name__=="__main__":#this will only run if it is a script and not a import module
     main()
-
-

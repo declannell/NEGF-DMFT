@@ -102,7 +102,7 @@ def green_lesser_calculator( parameters , green_function, energy):
     for r in range(0, parameters.steps):
         for i in range(0, parameters.chain_length):
             for j in range(0, parameters.chain_length):
-                g_lesser[r][i][j]= -2j*fermi_function( energy[r], parameters)*(green_function[r][i][j]-np.conjugate(green_function[r][j][i]))  
+                g_lesser[r][i][j]= fermi_function( energy[r], parameters)*(green_function[r][i][j]-np.conjugate(green_function[r][j][i]))  
     return g_lesser
 
 def self_energy_calculator(parameters, g_0_up, g_0_down, energy):# this creates the entire energy array at once
@@ -196,7 +196,7 @@ def green_lesser_calculator1( parameters , green_function, energy):
     for r in range(0, parameters.steps):
         for i in range(0, 1):
             for j in range(0, 1):
-                g_lesser[r][i][j]= -2j*fermi_function( energy[r], parameters)*(green_function[r][i][j]-np.conjugate(green_function[r][j][i]))  
+                g_lesser[r][i][j]= fermi_function( energy[r], parameters)*(green_function[r][i][j]-np.conjugate(green_function[r][j][i]))  
     return g_lesser
 
 def self_energy_calculator1(parameters, g_0_up, g_0_down, energy):# this creates the entire energy array at once
@@ -248,7 +248,7 @@ def green_function_calculator( hamiltonian , self_energy , parameters, energy):
 
 def get_spin_occupation(spectral_function, energy, parameters):
     
-    x= 1/(2*np.pi)*integrating_function( spectral_function ,energy, parameters) 
+    x= 1/(np.pi)*integrating_function( spectral_function ,energy, parameters) 
     return x, 1-x
 
 def inner_dmft(parameters, gf_int_up, gf_int_down, energy):
@@ -365,7 +365,7 @@ def gf_dmft(parameters, energy):
     for r in range(0,parameters.steps):
         spectral_function_up[r]=spectral_function_calculator(gf_int_up[r], parameters)
         spectral_function_down[r]=spectral_function_calculator(gf_int_down[r], parameters)    
-    """
+
     for i in range(0, parameters.chain_length):
         fig = plt.figure()
         
@@ -376,7 +376,7 @@ def gf_dmft(parameters, energy):
         plt.xlabel("energy")
         plt.ylabel("Self Energy")  
         plt.show()
-    """
+
     #print("The spin up occupaton probability is ", spin_up_occup)
     return gf_int_up, gf_int_down, spectral_function_up, spectral_function_down, spin_up_occup, spin_down_occup
 
@@ -385,9 +385,9 @@ def gf_dmft(parameters, energy):
 def main():
     time_start = time.perf_counter()
     onsite, gamma, hopping, chemical_potential, temperature , hubbard_interaction = 1.0 , 2.0 , -1.0 ,0.0, 0.0 , 0.3
-    chain_length=3
+    chain_length=1
     steps=81 #number of energy points
-    e_upper_bound , e_lower_bound = 20.0 , -20.0
+    e_upper_bound , e_lower_bound = 10.0 , -10.0
     
     spin_up_occup , spin_down_occup = [ 0.0 for x in range(0, chain_length)] , [ 1.0 for x in range(0, chain_length)]
 

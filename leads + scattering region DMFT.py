@@ -395,7 +395,7 @@ def main():
     time_start = time.perf_counter()
     onsite, gamma, hopping, chemical_potential, temperature , hubbard_interaction = 1.0 , 2.0 , -1.0 ,0.0, 0.0 , 0.3
     chain_length=1
-    steps=81 #number of energy points
+    steps=7 #number of energy points
     e_upper_bound , e_lower_bound = 10.0 , -10.0
     
     spin_up_occup , spin_down_occup = [ 0.0 for x in range(0, chain_length)] , [ 1.0 for x in range(0, chain_length)]

@@ -1,7 +1,13 @@
 def onsite():
-    return 1.0#
+    return 2.0#
+
+
+#onsite = 1.0
 
 def onsite_l():
+    return 0.0
+
+def onsite_r():
     return 0.0
 
 def hopping():
@@ -16,7 +22,16 @@ def hopping_lx():
 def hopping_ly():
     return -0.10
 
+def hopping_rx():
+    return -1.0
+
+def hopping_ry():
+    return -0.10
+
 def hopping_lc():
+    return -0.5
+
+def hopping_rc():
     return -0.5
 
 def chain_length_x():
@@ -39,20 +54,21 @@ def temperature():
 def steps():
     return 81
 
+
 def e_upper_bound():
-    return 10.0
+    return 14.0
 
 def e_lower_bound():
-    return -10.0
+    return -14.0
 
 def hubbard_interaction():
     return 0.3
 
 def voltage_l():
-    return -0.0
+    return 0
 
 def voltage_r():
-    return 0.0
+    return 0
 
 def energy( ):
     energy = [e_lower_bound()+( e_upper_bound() - e_lower_bound() ) / steps() * x +0.00000000001*1j for x in range( steps() )]
