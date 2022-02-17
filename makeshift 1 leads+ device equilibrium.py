@@ -245,7 +245,7 @@ def gf_dmft(): # this function does not solve the impurity green function self c
     old_green_function=[[[1.0+1j for x in range(parameters.chain_length())] for y in range(parameters.chain_length())] for z in range(0,parameters.steps())] 
     difference=100.0
     count=0
-    while (difference>0.0000001 and count < 15) :
+    while (difference>0.0001 and count < 15) :
         count+=1
 
         for r in range(0,parameters.steps()):#this initially creates the non-interacting green functions. It then updates using a diagonal self parameters.energy().
@@ -354,13 +354,19 @@ def main():
     for r in range(0,parameters.steps()):  
             green_function_up1[r][0][0]=float(lines[r*2])+1j*float(lines[1+r*2]) 
     f.close()
-    difference = 0
-    
-    for r in range(0 , parameters.steps() ):
-        if (  abs(green_function_up1[r][0][0] - green_function_up[r][0][0]) > difference ):
-            difference = abs(green_function_up1[r][0][0] - green_function_up[r][0][0]) 
-            i= r
-            
+
+    n=parameters.chain_length()**2*parameters.steps()
+    differencelist=[0 for i in range(0,2*n)]
+
+    for r in range(0,parameters.steps()):
+        for i in range(0,parameters.chain_length()):
+            for j in range(0, parameters.chain_length()): #this is due to the spin_up_occup being of length chain_length
+                    
+                differencelist[r+i+j]=abs(green_function_up1[r][i][j].real-green_function_up[r][i][j].real)#/ abs(green_function_up[r][i][j].real)
+                differencelist[n+r+i+j]=abs(green_function_up1[r][i][j].imag-green_function_up[r][i][j].imag)#/abs(green_function_up[r][i][j].imag)
+
+    difference = max(differencelist)
+    print(differencelist)
     print( " the difference is ", difference )
     print(" the problematic energy steps is " , i )
     #print(green_function_up1[48][0][0] ,  green_function_up[48][0][0])

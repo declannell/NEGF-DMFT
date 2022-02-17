@@ -1,5 +1,5 @@
 def onsite():
-    return 2.0#
+    return 1.0#
 
 
 #onsite = 1.0
@@ -64,11 +64,11 @@ def e_lower_bound():
 def hubbard_interaction():
     return 0.3
 
-def voltage_l():
-    return 0
+voltage_r = [-0.05 * i for i in range(41)]
 
-def voltage_r():
-    return 0
+voltage_l = [0.05 * i for i in range(41)]
+
+voltage_step = 0
 
 def energy( ):
     energy = [e_lower_bound()+( e_upper_bound() - e_lower_bound() ) / steps() * x +0.00000000001*1j for x in range( steps() )]

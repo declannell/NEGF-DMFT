@@ -23,9 +23,10 @@ class SelfEnergy:
     chain_length_y: float
     principal_layer: float#this gives the number of orbitals within a principe layer
     parameters: None
+    voltage_step : float
      
-    def __init__(self , _principal_layer):
-        
+    def __init__(self , _principal_layer , _voltage_step):
+        self.voltage_step = _voltage_step
         self.principal_layer=_principal_layer         
         self.h_s=create_matrix(self.principal_layer)
         self.h_01_l=create_matrix(self.principal_layer)
@@ -133,11 +134,11 @@ class SelfEnergy:
             """
             f.write(str(0))
             f.write( "," )          
-            f.write(str(-4*fermi_function(parameters.energy()[r].real - parameters.voltage_l() )))
+            f.write(str(-4*fermi_function(parameters.energy()[r].real - parameters.voltage_l[self.voltage_step] )))
             f.write( "," )
             f.write(str(0))
             f.write( "," )
-            f.write(str(-4*fermi_function(parameters.energy()[r].real - parameters.voltage_r() )))
+            f.write(str(-4*fermi_function(parameters.energy()[r].real - parameters.voltage_r[self.voltage_step] )))
             f.write( "," )
             """
             
@@ -150,9 +151,9 @@ class SelfEnergy:
     def lesser_self_energy(self , num):
         for r in range(0 , parameters.steps() ):
             for i in range( 0 , parameters.chain_length_y() ):#fluctautation dissapation theorem is valid
-               self.self_energy_left_lesser[r][i][0][0] = - fermi_function( parameters.energy()[r].real + parameters.voltage_l() ) * ( self.self_energy_left[r][num][0][0] - np.conjugate( self.self_energy_left[r][num][0][0] ) )
-               self.self_energy_right_lesser[r][num][0][0] = - fermi_function( parameters.energy()[r].real + parameters.voltage_r() ) * ( self.self_energy_right[r][num][0][0] - np.conjugate( self.self_energy_right[r][num][0][0] ) )
-        
+               self.self_energy_left_lesser[r][i][0][0] = - fermi_function( parameters.energy()[r].real + parameters.voltage_l[self.voltage_step] ) * ( self.self_energy_left[r][num][0][0] - np.conjugate( self.self_energy_left[r][num][0][0] ) )
+               self.self_energy_right_lesser[r][num][0][0] = - fermi_function( parameters.energy()[r].real + parameters.voltage_r[self.voltage_step] ) * ( self.self_energy_right[r][num][0][0] - np.conjugate( self.self_energy_right[r][num][0][0] ) )
+        """
         fig = plt.figure()
         
         plt.plot( parameters.energy() , [e[num][0][0].imag for e in self.self_energy_left], color='blue', label='imaginary self energy' ) 
@@ -188,12 +189,12 @@ class SelfEnergy:
         plt.xlabel("energy")
         plt.ylabel("Self Energy lesser")  
         plt.show()
-        
+        """
         """
         for r in range(0 , parameters.steps() ):
             for i in range( 0 , parameters.chain_length_y() ):#fluctautation dissapation theorem is valid
-               self.self_energy_left_lesser[r][i] = fermi_function( parameters.energy()[r].real + parameters.voltage_l() ) * ( self.self_energy_left[r][num][0][0] - np.conjugate( self.self_energy_left[r][num][0][0] ) )
-               self.self_energy_right_lesser[r][i] = fermi_function( parameters.energy()[r].real + parameters.voltage_r() ) * ( self.self_energy_right[r][num][0][0] - np.conjugate( self.self_energy_right[r][num][0][0] ) )
+               self.self_energy_left_lesser[r][i] = fermi_function( parameters.energy()[r].real + parameters.voltage_l[self.voltage_step] ) * ( self.self_energy_left[r][num][0][0] - np.conjugate( self.self_energy_left[r][num][0][0] ) )
+               self.self_energy_right_lesser[r][i] = fermi_function( parameters.energy()[r].real + parameters.voltage_r[self.voltage_step] ) * ( self.self_energy_right[r][num][0][0] - np.conjugate( self.self_energy_right[r][num][0][0] ) )
         print(self.self_energy_left_lesser)
         """
         
@@ -206,8 +207,8 @@ class SelfEnergy:
         
         if( parameters.chain_length_y() == 1 ):
             for r in range( 0 , parameters.steps() ):                
-                t_next_l[r] = parameters.hopping_lx() / (parameters.energy()[r] - parameters.onsite_l() - parameters.voltage_l() )
-                t_next_r[r] = parameters.hopping_rx() / (parameters.energy()[r] - parameters.onsite_r() - parameters.voltage_r() )
+                t_next_l[r] = parameters.hopping_lx() / (parameters.energy()[r] - parameters.onsite_l() - parameters.voltage_l[self.voltage_step] )
+                t_next_r[r] = parameters.hopping_rx() / (parameters.energy()[r] - parameters.onsite_r() - parameters.voltage_r[self.voltage_step] )
                 a_l[r] = t_next_l[r]
                 a_r[r] = t_next_r[r]
                 self.transfer_matrix_l[r][0][0] = t_next_l[r]
@@ -216,8 +217,8 @@ class SelfEnergy:
         else:
             #print(-self.parameters.onsite_l-2*self.parameters.hopping_ly*np.cos(k_y))
             for r in range( 0 , parameters.steps() ):
-                t_next_l[r] = parameters.hopping_lx() /( parameters.energy()[r] - parameters.onsite_l() - parameters.voltage_l() - 2 * parameters.hopping_ly() * np.cos(k_y))
-                t_next_r[r] = parameters.hopping_rx() /( parameters.energy()[r] - parameters.onsite_r() - parameters.voltage_r() - 2 * parameters.hopping_ry() * np.cos(k_y))
+                t_next_l[r] = parameters.hopping_lx() /( parameters.energy()[r] - parameters.onsite_l() - parameters.voltage_l[self.voltage_step] - 2 * parameters.hopping_ly() * np.cos(k_y))
+                t_next_r[r] = parameters.hopping_rx() /( parameters.energy()[r] - parameters.onsite_r() - parameters.voltage_r[self.voltage_step] - 2 * parameters.hopping_ry() * np.cos(k_y))
                 a_l[r] = t_next_l[r]
                 a_r[r] = t_next_r[r]
 
@@ -244,18 +245,18 @@ class SelfEnergy:
                 differencelist[n + r] = abs(self.transfer_matrix_l[r][0][0].imag - old_transfer[r].imag)
                 old_transfer[r] = self.transfer_matrix_l[r][0][0]
             difference = max ( differencelist )
-            print ("The difference is ", difference)
-        print(" This converged in " ,count, " iterations.\n")
+            #print ("The difference is ", difference)
+        #print(" This converged in " ,count, " iterations.\n")
 
     def sgf( self , num , k_y ):
         if( parameters.chain_length_y() == 1 ):
             for r in range( 0 , parameters.steps() ):
-                self.surface_gf_l[r][num][0][0] = 1 / (parameters.energy()[r] - parameters.onsite_l() - parameters.voltage_l() - parameters.hopping_lx() * self.transfer_matrix_l[r][0][0] )
-                self.surface_gf_r[r][num][0][0] = 1 / (parameters.energy()[r] - parameters.onsite_r() - parameters.voltage_r() - parameters.hopping_rx() * self.transfer_matrix_r[r][0][0] )       
+                self.surface_gf_l[r][num][0][0] = 1 / (parameters.energy()[r] - parameters.onsite_l() - parameters.voltage_l[self.voltage_step]- parameters.hopping_lx() * self.transfer_matrix_l[r][0][0] )
+                self.surface_gf_r[r][num][0][0] = 1 / (parameters.energy()[r] - parameters.onsite_r() - parameters.voltage_r[self.voltage_step] - parameters.hopping_rx() * self.transfer_matrix_r[r][0][0] )       
         else:
             for r in range( 0 , parameters.steps ):
-                self.surface_gf_l[r][num][0][0] = 1 / (parameters.energy()[r] - parameters.voltage_l() - parameters.onsite_l() - 2 * parameters.hopping_ly() * np.cos(k_y) - parameters.hopping_lx() * self.transfer_matrix_l[r][0][0] )
-                self.surface_gf_r[r][num][0][0] = 1 / (parameters.energy()[r] - parameters.voltage_r() - parameters.onsite_r() - 2 * parameters.hopping_ry() * np.cos(k_y) - parameters.hopping_rx() * self.transfer_matrix_r[r][0][0] )
+                self.surface_gf_l[r][num][0][0] = 1 / (parameters.energy()[r] - parameters.voltage_l[self.voltage_step] - parameters.onsite_l() - 2 * parameters.hopping_ly() * np.cos(k_y) - parameters.hopping_lx() * self.transfer_matrix_l[r][0][0] )
+                self.surface_gf_r[r][num][0][0] = 1 / (parameters.energy()[r] - parameters.voltage_r[self.voltage_step] - parameters.onsite_r() - 2 * parameters.hopping_ry() * np.cos(k_y) - parameters.hopping_rx() * self.transfer_matrix_r[r][0][0] )
     def lead_self_energy(self, num):
         for r in range(0,  parameters.steps() ):
             self.self_energy_left[r][num][0][0] = parameters.hopping_lc()**2 * self.surface_gf_l[r][num][0][0]
@@ -292,10 +293,10 @@ def sgn(x):
     elif x<0 :
         return -1
     
-def analytic_se():
+def analytic_se(voltage_step):
     analytic_se= [ 0 for i  in range( parameters.steps() )]# this assume the interaction between the scattering region and leads is nearest neighbour 
     for i in range(0, parameters.steps() ):
-        x=( parameters.energy()[i].real - parameters.onsite_l() -parameters.voltage_l() ) / ( 2 * parameters.hopping_lx() )
+        x=( parameters.energy()[i].real - parameters.onsite_l() -parameters.voltage_l[voltage_step] ) / ( 2 * parameters.hopping_lx() )
         #print(x, energy[i])
         analytic_se[i] = ( parameters.hopping_lc()**2) * (1/parameters.hopping_lx() ) * ( x  ) 
         if (abs(x) > 1):
@@ -317,10 +318,11 @@ def analytic_se():
 
 def main():
     principal_layer=1
-    
-    self_energy = SelfEnergy( principal_layer )
+    voltage_step = parameters.voltage_step  # voltage step of zero is equilibrium.
+    print(parameters.voltage_r[voltage_step])
+    self_energy = SelfEnergy( principal_layer, voltage_step )
     #self_energy.print()
-    analytic_se()
+    #analytic_se(voltage_step)
     #print(energy)
 
 if __name__=="__main__":#this will only run if it is a script and not a import module
