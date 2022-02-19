@@ -309,8 +309,6 @@ def analytic_gf_1site():
     
 def analytic_gf_2site():
     analytic_gf= [ 0 for i  in range(parameters.steps())]# this assume the interaction between the scattering region and leads is nearest neighbour 
-
-    
     f= open(r"C:\Users\user\Desktop\Green function code\Green's Function\embedding_self_parameters.energy().txt", "r")
     lines = f.read().split(',')  
     for r in range(0,parameters.steps()):  
@@ -331,10 +329,7 @@ def analytic_gf_2site():
     
 def main():
     time_start = time.perf_counter()
-    
     spin_up_occup , spin_down_occup = [ 0.0 for x in range(0, parameters.chain_length())] , [ 1.0 for x in range(0, parameters.chain_length())]
-
- 
     green_function_up1=[create_matrix(parameters.chain_length()) for z in range(0,parameters.steps())] 
     green_function_down=[create_matrix(parameters.chain_length()) for z in range(0,parameters.steps())]
     
@@ -366,7 +361,7 @@ def main():
                 differencelist[n+r+i+j]=abs(green_function_up1[r][i][j].imag-green_function_up[r][i][j].imag)#/abs(green_function_up[r][i][j].imag)
 
     difference = max(differencelist)
-    print(differencelist)
+    #print(differencelist)
     print( " the difference is ", difference )
     print(" the problematic energy steps is " , i )
     #print(green_function_up1[48][0][0] ,  green_function_up[48][0][0])
