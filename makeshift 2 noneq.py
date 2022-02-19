@@ -1,3 +1,4 @@
+from mpmath import mpc
 import scipy.linalg as la
 import matplotlib.pyplot as plt
 import numpy as np
@@ -78,11 +79,13 @@ def fermi_function( energy ):
     else:
         return 1 / (1 + math.exp( ( energy - parameters.chemical_potential() ) / parameters.temperature() ))
 
-def integrate(  gf_1, gf_2, gf_3, r):# in this function, the green functions are 1d arrays in energy. this is becasue we have passed the diagonal component of the green fun( lesser, or retarded) 
+def integrate(  raw_gf_1, raw_gf_2, raw_gf_3, r):# in this function, the green functions are 1d arrays in energy. this is becasue we have passed the diagonal component of the green fun( lesser, or retarded) 
     delta_energy = ( parameters.e_upper_bound() - parameters.e_lower_bound() ) / parameters.steps()
     result = 0    
     
-    
+    gf_1 = [ mpc(e) for e in raw_gf_1] 
+    gf_2 = [ mpc(e) for e in raw_gf_2] 
+    gf_3 = [ mpc(e) for e in raw_gf_3] 
     
     for i in range(0,parameters.steps() ):
         for j in range(0,parameters.steps() ):
@@ -94,13 +97,10 @@ def integrate(  gf_1, gf_2, gf_3, r):# in this function, the green functions are
                 
                 
                 result=(delta_energy/(2*np.pi))**2 * gf_1[i] * gf_2[j] * gf_3[ (i+j-r) ] +result
-
-            else:
-                result=result        
-                energy = parameters.e_lower_bound() +  delta_energy * (i + j - r) 
+     
                 #print("the energy is ", energy , i , j)                
     
-    return result
+    return complex(result)
 
 def green_lesser_local(  green_function):
     g_lesser = [ create_matrix(1) for z in range( 0 , parameters.steps() )]  
@@ -215,13 +215,13 @@ def lesser_se_mb_eq( gf_r_up , gf_r_down ):
     return self_energy_up_lesser 
 
 def inner_dmft( gf_int_up , gf_int_down , gf_int_lesser_up , gf_int_lesser_down ): #this solves the impurity problem self consistently
-    g_local_up=[ create_matrix(1) for i in range( parameters.steps() ) ]#computationally this is a pointer to a pointer which contain g_local. This must be inefficient computationally.
-    g_local_down=[ create_matrix(1) for i in range( parameters.steps() ) ]
     self_energy_up = [ create_matrix( parameters.chain_length() ) for z in range( 0 , parameters.steps() ) ]  
     self_energy_down = [ create_matrix( parameters.chain_length() ) for z in range( 0 , parameters.steps() ) ] 
     self_energy_up_lesser = [ create_matrix( parameters.chain_length() ) for z in range( 0 , parameters.steps() ) ] 
     self_energy_down_lesser = [create_matrix( parameters.chain_length() ) for z in range( 0 , parameters.steps()  ) ] 
 
+    g_local_up=[ create_matrix(1) for i in range( parameters.steps() ) ]#computationally this is a pointer to a pointer which contain g_local. This must be inefficient computationally.
+    g_local_down=[ create_matrix(1) for i in range( parameters.steps() ) ]
     local_sigma_up , local_sigma_down = [ create_matrix(1) for i in range( parameters.steps() )] , [create_matrix(1) for i in range(parameters.steps())]
     spin_up_occup , spin_down_occup = [ 0.0 for x in range(0, parameters.chain_length() )] , [ 0.0 for x in range(0, parameters.chain_length())]
     local_sigma_down = [ create_matrix(1) for i in range( parameters.steps() )]
@@ -236,13 +236,14 @@ def inner_dmft( gf_int_up , gf_int_down , gf_int_lesser_up , gf_int_lesser_down 
     n = parameters.chain_length() * parameters.steps()       
     differencelist = [0 for i in range( 0, 2 * n ) ]    
     """
+    
     difference = 100.0
     for i in range( 0 , parameters.chain_length() ):         
         for r in range( 0 , parameters.steps() ):#this sets the impurity green function to the local lattice green function for each lattice site(the i for loop)
             g_local_up[r][0][0] = gf_int_up[r][i][i]
             g_local_down[r][0][0] = gf_int_down[r][i][i]
                                             
-        while( difference > 0.000001 ):#this is solving the impurity problem self consistently which in principle should be correct
+        while( difference > 0.000001 ):#this is solving the impurity problem self consistently.
             local_spin_up , local_spin_down = get_spin_occupation( [ e[0][0] for e in gf_int_lesser_up ] ,  [ e[0][0] for e in gf_int_lesser_down ] )
             local_sigma_up = self_energy_calculator( g_local_up , g_local_down ,  gf_int_lesser_up , gf_int_lesser_down )
             local_sigma_down = self_energy_calculator( g_local_down , g_local_up , gf_int_lesser_down , gf_int_lesser_up )
@@ -278,10 +279,9 @@ def inner_dmft( gf_int_up , gf_int_down , gf_int_lesser_up , gf_int_lesser_down 
 
 
 def gf_dmft(): # this function does not solve the impurity green function self consistently
+    #these are 3d arrays. The first index will be the energy. The remaining indices will be i and j component of the matrix.
     gf_int_up = [ create_matrix( parameters.chain_length() ) for z in range( 0 , parameters.steps() ) ] 
     gf_int_down = [ create_matrix( parameters.chain_length() ) for z in range( 0 , parameters.steps() ) ]
-    spectral_function_up = [ create_matrix( parameters.chain_length() ) for z in range( 0 , parameters.steps() ) ] 
-    spectral_function_down = [ create_matrix( parameters.chain_length() ) for z in range( 0 , parameters.steps() ) ]
 
     se_mb_up = [ create_matrix( parameters.chain_length() ) for z in range( 0 , parameters.steps() )] 
     se_mb_down = [ create_matrix( parameters.chain_length() ) for z in range( 0 , parameters.steps() )] 
@@ -308,9 +308,11 @@ def gf_dmft(): # this function does not solve the impurity green function self c
         gf_int_lesser_up = gf_lesser_nq( gf_int_up , se_mb_up_lesser )
         gf_int_lesser_down = gf_lesser_nq(  gf_int_down , se_mb_down_lesser )            
 
-        #spin_up_occup are included within the self energy as well. Spin_up_occup is only included so we can view there value
+        #spin_up_occup are included within the self energy as well. Spin_up_occup is only included so we can view there value.
+        #This inner loop can solve the anderson impurity model self consistently if one wants.
         se_mb_up , se_mb_down , se_mb_up_lesser , se_mb_down_lesser , spin_up_occup , spin_down_occup = inner_dmft( gf_int_up , gf_int_down , gf_int_lesser_up , gf_int_lesser_down )
-
+        
+        #this is testing for convergence. 
         print( "In the ",  count, "first DMFT loop the spin occupation is " , spin_up_occup)
         for r in range( 0 , parameters.steps() ):
                 for i in range( 0 , parameters.chain_length() ):
@@ -323,11 +325,9 @@ def gf_dmft(): # this function does not solve the impurity green function self c
         difference = max(differencelist)
         print("The difference is " , difference, "The count is " , count)
         #print("The mean difference is ", np.mean(differencelist))
-        
-    for r in range( 0 , parameters.steps() ):
-        spectral_function_up[r] = spectral_function_calculator(gf_int_up[r])
-        spectral_function_down[r] = spectral_function_calculator(gf_int_down[r])    
     
+    
+    #this is plotting the converged self energy.
     for i in range( 0, parameters.chain_length() ):
         fig = plt.figure()
         
@@ -340,7 +340,7 @@ def gf_dmft(): # this function does not solve the impurity green function self c
         plt.show()
     print("The spin up occupaton probability is ", spin_up_occup)
     compare_g_lesser(gf_int_lesser_up , gf_int_up)
-    return gf_int_up, gf_int_down, spectral_function_up, spectral_function_down, spin_up_occup, spin_down_occup , gf_int_lesser_up 
+    return gf_int_up, gf_int_down, spin_up_occup, spin_down_occup , gf_int_lesser_up 
 
 
 def compare_g_lesser( g_lesser_up, gf_int_up):
@@ -540,7 +540,7 @@ def main():
     #this creates [ [ [0,0,0] , [0,0,0],, [0,0,0] ] , [0,0,0] , [0,0,0],, [0,0,0] ] ... ], ie one chain_length by chain_length 
     # dimesional create_matrix for each energy. The first index in spectral function refers to what energy we are selcting. 
     #the next two indices refer to which enter in our create_matrix we are selecting.    
-    green_function_up, green_function_down, spectral_function_up, spectral_function_down, spin_up_occup, spin_down_occup , lesser_gf_up = gf_dmft()
+    green_function_up, green_function_down , spin_up_occup, spin_down_occup , lesser_gf_up = gf_dmft()
 
     magnetisation=[spin_up_occup[i]-spin_down_occup[i] for i in range(0,parameters.chain_length())]
     #analytic2=[(2/np.pi)*gamma/((energy[x]-onsite-hubbard_interaction*spin_up_occup[-1]+hubbard_interaction*spin_down_occup[-1]*spin_up_occup[-1])**2+4*gamma**2) for x in range(steps)]   
