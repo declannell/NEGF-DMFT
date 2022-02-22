@@ -1,76 +1,55 @@
-def onsite():
-    return 1.0#
+onsite = 1.0#onsite energy in the scattering region
 
+onsite_l = 0.0  #onsite energy in the left lead
 
-#onsite = 1.0
+onsite_r = 0.0  #onsite energy in the right lead
+    
+hopping = -1.0 #the hopping the x direction of the scattering region
 
-def onsite_l():
-    return 0.0
+hopping_y = -1.0#the hopping the y direction of the scattering region
 
-def onsite_r():
-    return 0.0
+hopping_lx = -1.0 #the hopping in the x direction of the left lead
 
-def hopping():
-    return -1.0
+hopping_ly = -1.0 #the hopping in the y direction of the left lead
 
-def hopping_y():
-    return -1.0
+hopping_rx = -1.0 #the hopping in the x direction of the right lead
 
-def hopping_lx():
-    return -1.0
+hopping_ry= -0.10 # the hopping in the y direction of the right lead
 
-def hopping_ly():
-    return -0.10
+hopping_lc = -0.5 # the hopping inbetween the left lead and scattering region
 
-def hopping_rx():
-    return -1.0
+hopping_rc = -0.5 # the hopping inbetween the right lead and scattering region
 
-def hopping_ry():
-    return -0.10
+chain_length = 1 # the number of atoms in the x direction of the scattering region
 
-def hopping_lc():
-    return -0.5
+chain_length_y = 1 # this is the number of k in the y direction for the scattering region
 
-def hopping_rc():
-    return -0.5
+chain_length_ly = 1 # this is the number of k points I will take in the leads in the y direction
 
-def chain_length_x():
-    return 1
+chemical_potential = 0.0
 
-def chain_length():
-    return 1
-def chain_length_y():
-    return 1
+temperature = 0.0
 
-def chain_length_ly():
-    return 1
+steps = 81 #number of energy points we take
 
-def chemical_potential():
-    return 0.0
+e_upper_bound = 14.0 # this is the max energy value
 
-def temperature():
-    return 0.0
-
-def steps():
-    return 81
-
-
-def e_upper_bound():
-    return 14.0
-
-def e_lower_bound():
-    return -14.0
-
-def hubbard_interaction():
-    return 0.3
+e_lower_bound = -14.0# this is the min energy value
+hubbard_interaction = 0.0 # this is the hubbard interaction
 
 voltage_r = [-0.05 * i for i in range(41)]
 
 voltage_l = [0.05 * i for i in range(41)]
 
-voltage_step = 0
+voltage_step = 1 # voltage step of zero is equilibrium. This is an integer and higher values correspond to a higher potential difference between the two leads.
 
-def energy( ):
-    energy = [e_lower_bound()+( e_upper_bound() - e_lower_bound() ) / steps() * x +0.00000000001*1j for x in range( steps() )]
-    return energy
+pi = 3.14159265359
 
+#this needs a tiny imaginary part for convergence in the calculation of the embedding self energy
+energy = [e_lower_bound+( e_upper_bound - e_lower_bound ) / steps * x +0.00000000001 * 1j for x in range(steps)]
+
+def conjugate(x):
+    a = x.real
+    b = x.imag
+    y = a - 1j * b
+    return y
