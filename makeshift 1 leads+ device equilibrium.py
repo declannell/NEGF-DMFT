@@ -209,8 +209,8 @@ def inner_dmft( gf_int_up, gf_int_down): #this solves the impurity problem self 
             local_sigma_down=self_energy_calculator( g_local_down, g_local_up )
             #print(local_sigma_up)
             for r in range(0,parameters.steps):
-                 local_sigma_up[r][0][0] += parameters.hubbard_interaction * local_spin_down
-                 local_sigma_down[r][0][0] += parameters.hubbard_interaction * local_spin_up
+                 local_sigma_up[r][0][0] = parameters.hubbard_interaction * local_spin_down
+                 local_sigma_down[r][0][0] = parameters.hubbard_interaction * local_spin_up
             """
                  g_initial_up[r]=1/((1/g_local_up[r][0][0])+local_sigma_up[r][0][0])# this is getting the new dynamical mean field
                  g_initial_down[r]=1/((1/g_local_down[r][0][0])+local_sigma_down[r][0][0])

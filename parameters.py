@@ -35,13 +35,13 @@ steps = 81 #number of energy points we take
 e_upper_bound = 14.0 # this is the max energy value
 
 e_lower_bound = -14.0# this is the min energy value
-hubbard_interaction = 0.0 # this is the hubbard interaction
+hubbard_interaction = 0.3 # this is the hubbard interaction
 
 voltage_r = [-0.05 * i for i in range(41)]
 
 voltage_l = [0.05 * i for i in range(41)]
 
-voltage_step = 1 # voltage step of zero is equilibrium. This is an integer and higher values correspond to a higher potential difference between the two leads.
+voltage_step = 0 # voltage step of zero is equilibrium. This is an integer and higher values correspond to a higher potential difference between the two leads.
 
 pi = 3.14159265359
 
