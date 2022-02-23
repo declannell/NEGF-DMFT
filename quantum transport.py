@@ -206,7 +206,7 @@ def lesser_se_mb( gf_r_down , gf_lesser_down , gf_lesser_up ):#this code obtains
                 gf_greater_down[r][i][j] = gf_r_down[r][i][j] - gf_a_down[r][i][j] + gf_lesser_down[r][i][j]  
     for r in range( 0 , parameters.steps):
         for i in range(0 , parameters.chain_length):
-            self_energy_up_lesser[r][i][i] = 0#parameters.hubbard_interaction**2 * integrate( [ e[i][i] for e in gf_lesser_up ] , [ e[i][i] for e in gf_lesser_down ]  , [ e[i][i] for e in gf_greater_down ]   , r )  
+            self_energy_up_lesser[r][i][i] = parameters.hubbard_interaction**2 * integrate( [ e[i][i] for e in gf_lesser_up ] , [ e[i][i] for e in gf_lesser_down ]  , [ e[i][i] for e in gf_greater_down ]   , r )  
     return self_energy_up_lesser
 
 """   
@@ -266,8 +266,8 @@ def inner_dmft( gf_int_up , gf_int_down , gf_int_lesser_up , gf_int_lesser_down 
             for r in range( 0 , parameters.steps ):
                 
                  # to make first order u should remove the += and just have a = sign
-                 local_sigma_up[r][0][0] = parameters.hubbard_interaction * local_spin_down
-                 local_sigma_down[r][0][0] = parameters.hubbard_interaction * local_spin_up
+                 local_sigma_up[r][0][0] += parameters.hubbard_interaction * local_spin_down
+                 local_sigma_down[r][0][0] += parameters.hubbard_interaction * local_spin_up
                  """#this is for when we want to get the anderson impurity self consistently
                  g_initial_up[r] = 1 / ( ( 1 / g_local_up[r][0][0]) + local_sigma_up[r][0][0] )# this is getting the new dynamical mean field
                  g_initial_down[r] = 1 / ( ( 1 / g_local_down[r][0][0]) + local_sigma_down[r][0][0] )
@@ -373,10 +373,10 @@ def compare_g_lesser( g_lesser_up, gf_int_up):# this function compare the lesser
     for r in range(0 , parameters.steps ):
         for i in range(0 , parameters.chain_length ):
             for j in range(0 , parameters.chain_length ):
-                if( abs(g_lesser_up[r][i][j].real - lesser_g[r][i][j].real ) / g_lesser_up[r][i][j].real > difference ):
+                if( abs(g_lesser_up[r][i][j].real - lesser_g[r][i][j].real )  > difference ):
                     difference = abs(g_lesser_up[r][i][j].real - lesser_g[r][i][j].real )
                     count = r
-                if( abs(g_lesser_up[r][i][j].imag - lesser_g[r][i][j].imag ) / g_lesser_up[r][i][j].imag > difference ):
+                if( abs(g_lesser_up[r][i][j].imag - lesser_g[r][i][j].imag )  > difference ):
                     difference = abs(g_lesser_up[r][i][j].imag - lesser_g[r][i][j].imag )  
                     count = r
     print(" The difference between the two methods in the lesser gf is " , difference , ". This occured for count = " , count )
