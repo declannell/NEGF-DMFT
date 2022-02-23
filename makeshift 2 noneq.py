@@ -195,7 +195,7 @@ def lesser_se_mb( gf_r_down , gf_lesser_down , gf_lesser_up ):
     
     warnings.warn('Dear future Declan,  Please change this for when you do for than 1 orbital in the scattering region. Your sincerely, past Declan ')
     for r in range( 0 , parameters.steps):
-        self_energy_up_lesser[r][0][0] = parameters.hubbard_interaction**2 * integrate( [ e[0][0] for e in gf_lesser_up ] , [ e[0][0] for e in gf_lesser_down ]  , [ e[0][0] for e in gf_greater_down ]   , r ) 
+        self_energy_up_lesser[r][0][0] = 0# parameters.hubbard_interaction**2 * integrate( [ e[0][0] for e in gf_lesser_up ] , [ e[0][0] for e in gf_lesser_down ]  , [ e[0][0] for e in gf_greater_down ]   , r ) 
         
     return self_energy_up_lesser
     
@@ -253,8 +253,8 @@ def inner_dmft( gf_int_up , gf_int_down , gf_int_lesser_up , gf_int_lesser_down 
             local_sigma_down = self_energy_calculator( g_local_down , g_local_up , gf_int_lesser_down , gf_int_lesser_up )
             
             for r in range( 0 , parameters.steps ):
-                 local_sigma_up[r][0][0] += parameters.hubbard_interaction * local_spin_down
-                 local_sigma_down[r][0][0] += parameters.hubbard_interaction * local_spin_up
+                 local_sigma_up[r][0][0] = parameters.hubbard_interaction * local_spin_down
+                 local_sigma_down[r][0][0] = parameters.hubbard_interaction * local_spin_up
                  """#this is for when we want to get the anderson impurity self consistently
                  g_initial_up[r] = 1 / ( ( 1 / g_local_up[r][0][0]) + local_sigma_up[r][0][0] )# this is getting the new dynamical mean field
                  g_initial_down[r] = 1 / ( ( 1 / g_local_down[r][0][0]) + local_sigma_down[r][0][0] )

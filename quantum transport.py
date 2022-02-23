@@ -206,7 +206,7 @@ def lesser_se_mb( gf_r_down , gf_lesser_down , gf_lesser_up ):#this code obtains
                 gf_greater_down[r][i][j] = gf_r_down[r][i][j] - gf_a_down[r][i][j] + gf_lesser_down[r][i][j]  
     for r in range( 0 , parameters.steps):
         for i in range(0 , parameters.chain_length):
-            self_energy_up_lesser[r][i][i] = parameters.hubbard_interaction**2 * integrate( [ e[i][i] for e in gf_lesser_up ] , [ e[i][i] for e in gf_lesser_down ]  , [ e[i][i] for e in gf_greater_down ]   , r )  
+            self_energy_up_lesser[r][i][i] = 0#parameters.hubbard_interaction**2 * integrate( [ e[i][i] for e in gf_lesser_up ] , [ e[i][i] for e in gf_lesser_down ]  , [ e[i][i] for e in gf_greater_down ]   , r )  
     return self_energy_up_lesser
 
 """   
