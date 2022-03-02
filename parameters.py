@@ -8,11 +8,11 @@ hopping = -1.0 #the hopping the x direction of the scattering region
 
 hopping_y = -1.0#the hopping the y direction of the scattering region
 
-hopping_lx = -1.0 #the hopping in the x direction of the left lead
+hopping_lx = -4.0 #the hopping in the x direction of the left lead
 
 hopping_ly = -1.0 #the hopping in the y direction of the left lead
 
-hopping_rx = -1.0 #the hopping in the x direction of the right lead
+hopping_rx = -4.0 #the hopping in the x direction of the right lead
 
 hopping_ry= -0.10 # the hopping in the y direction of the right lead
 
@@ -30,16 +30,16 @@ chemical_potential = 0.0
 
 temperature = 0.0
 
-steps = 81 #number of energy points we take
+steps = 201 #number of energy points we take
 
 e_upper_bound = 14.0 # this is the max energy value
 
 e_lower_bound = -14.0# this is the min energy value
-hubbard_interaction = 0.3 # this is the hubbard interaction
+hubbard_interaction = 0.0 # this is the hubbard interaction
 
-voltage_r = [-0.05 * i for i in range(41)]
+voltage_r = [-0.15 * i for i in range(41)]
 
-voltage_l = [0.05 * i for i in range(41)]
+voltage_l = [0.15 * i for i in range(41)]
 
 voltage_step = 0 # voltage step of zero is equilibrium. This is an integer and higher values correspond to a higher potential difference between the two leads.
 

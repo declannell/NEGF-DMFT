@@ -108,7 +108,7 @@ class SelfEnergy:
             for i in range( 0 , parameters.chain_length_y ):#fluctautation dissapation theorem is valid
                self.self_energy_left_lesser[r][i][0][0] = - fermi_function( parameters.energy[r].real + parameters.voltage_l[self.voltage_step] ) * ( self.self_energy_left[r][num][0][0] - parameters.conjugate( self.self_energy_left[r][num][0][0] ) )
                self.self_energy_right_lesser[r][num][0][0] = - fermi_function( parameters.energy[r].real + parameters.voltage_r[self.voltage_step] ) * ( self.self_energy_right[r][num][0][0] - parameters.conjugate( self.self_energy_right[r][num][0][0] ) )
-
+        """
         fig = plt.figure()
         
         plt.plot( parameters.energy , [e[num][0][0].imag for e in self.self_energy_left], color='blue', label='imaginary self energy' ) 
@@ -128,7 +128,7 @@ class SelfEnergy:
         plt.xlabel("energy")
         plt.ylabel("Self Energy")  
         plt.show()
-        
+        """
         plt.plot(parameters.energy , [e[num][0][0].imag for e in self.self_energy_left_lesser] , color = 'green'  , label='imaginary')
         plt.plot(parameters.energy , [e[num][0][0].real for e in self.self_energy_left_lesser] , color = 'orange'  , label='real')
         plt.title(" Numerical left Self Energy lesser")
@@ -144,7 +144,7 @@ class SelfEnergy:
         plt.xlabel("energy")
         plt.ylabel("Self Energy lesser")  
         plt.show()
-
+    
         """
         for r in range(0 , parameters.steps ):
             for i in range( 0 , parameters.chain_length_y ):#fluctautation dissapation theorem is valid

@@ -560,7 +560,7 @@ def main():
     
     fig = plt.figure()
     analytic_gf =     analytic_gf_1site()
-    if(parameters.hubbard_interaction == 0):
+    if(parameters.hubbard_interaction == 0.0):
         for i in range(0, parameters.chain_length):
 
            plt.plot( parameters.energy , [ e[i][i].real for e in green_function_up]  , color='red' , label='Real Green up' ) 
@@ -573,7 +573,7 @@ def main():
 #   
    # plt.plot(energy,analytic, color='tomato')
     #plt.plot(energy,analytic2, color='green')
-
+        plt.xlim(-2,3)
         plt.title("Converged Green function on analytic green function")
         plt.legend(loc='upper left')
         plt.xlabel("energy")
