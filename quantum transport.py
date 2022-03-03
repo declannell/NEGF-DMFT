@@ -345,7 +345,8 @@ def gf_dmft(voltage: int): # this function gets the converged green function usi
         #print("The difference is " , difference, "The count is " , count)
         #print(" ")
         #print("The mean difference is ", np.mean(differencelist))
-        
+        if ( parameters.hubbard_interaction == 0):
+            break
         
     #once converged we get the spectral function and we plot the many body self energy
     for r in range( 0 , parameters.steps ):
@@ -491,7 +492,7 @@ def current_Meir_wingreen( spectral_function: List[List[List[complex]]] , lesser
     for r in range(0 , parameters.steps ):
         for i in range(0 , parameters.chain_length ):
             for k in range(0 , parameters.chain_length ):#factor of two comes from the spin. This cancels with a factor of two in the formula. This is from the paper. PHYSICAL REVIEW B 72, 125114 2005
-                integrand[i][r]  -=  ( ( fermi_function( parameters.voltage_l[voltage_step] + parameters.energy[r].real ) * coupling_left[r][i][k] - fermi_function( parameters.voltage_r[voltage_step]  + parameters.energy[r].real ) * coupling_right[r][i][k] ) * spectral_function[r][k][i] + 1j * ( coupling_left[r][i][k] - coupling_right[r][i][k] ) * lesser_gf[r][k][i] )
+                integrand[i][r]  =  ( ( fermi_function( - parameters.voltage_l[voltage_step] + parameters.energy[r].real ) * coupling_left[r][i][k] - fermi_function( - parameters.voltage_r[voltage_step]  + parameters.energy[r].real ) * coupling_right[r][i][k] ) * spectral_function[r][k][i] + 1j * ( coupling_left[r][i][k] - coupling_right[r][i][k] ) * lesser_gf[r][k][i] )
     
     
     for r in range(0 , parameters.steps  ):
@@ -529,14 +530,14 @@ def landauer_current( gf_r: List[List[List[complex]]] , left_se_r: List[List[Lis
             for j in range(0 , parameters.chain_length ):
                 for k in range(0 , parameters.chain_length ):
                     transmission[i][r]  = coupling_left[r][i][k] * gf_r[r][k][j] * coupling_right[r][j][j] * gf_a[r][j][i] 
-
+    """
     fig = plt.figure()
     plt.plot( parameters.energy , transmission[i]  , color='red'  ) 
     plt.title("Transmission")
     plt.xlabel("energy")
     plt.ylabel("Transmission probability")  
     plt.show()     
-
+    """
     
     
     
@@ -544,9 +545,9 @@ def landauer_current( gf_r: List[List[List[complex]]] , left_se_r: List[List[Lis
     
     for r in range(0 , parameters.steps  ):
         for i in range(0 , parameters.chain_length ):
-            trace[r] +=  2 * (fermi_function(parameters.energy[r] + parameters.voltage_l[voltage_step] ) - fermi_function(parameters.energy[r] + parameters.voltage_r[voltage_step] ) ) * transmission[i][r] #factor of 2 is due to spin up and down
+            trace[r] +=  2 * (fermi_function(parameters.energy[r] - parameters.voltage_l[voltage_step] ) - fermi_function(parameters.energy[r] - parameters.voltage_r[voltage_step] ) ) * transmission[i][r] #factor of 2 is due to spin up and down
 
-    current = - trace_integrate(trace) 
+    current = trace_integrate(trace) 
     
     return current
     
@@ -601,28 +602,31 @@ def embedding_self_energy_retarded():# this gets the embeddign self energy from 
     return self_energy_left , self_energy_right
 
 def current_voltage_graph():#this will create a current vs voltage graph for several potential biases. 
-    points = 20
+    points = 10
     current = [ 0 for i in range(points)]
     current_landauer = [ 0 for i in range(points)]
 
     voltage = [parameters.voltage_l[i] - parameters.voltage_r[i] for i in range(points) ]
     for i in range(0 , points):#this for loop determines how many voltage biases we want ot consider.
         print("The bias is ", parameters.voltage_l[i] - parameters.voltage_r[i])
-        self_energy = leads_self_energy.SelfEnergy(1 , i)        #this recalculates the embedding self energy for each bias.
+        self_energy = leads_self_energy.SelfEnergy(1 , i)    
+        #this recalculates the embedding self energy for each bias.
         green_function_up, green_function_down, spectral_function_up, spectral_function_down, spin_up_occup, spin_down_occup , gf_int_lesser_up = gf_dmft(i)#we then obtain the gf and stuff for every bias. 
         #magnetisation=[spin_up_occup[i]-spin_down_occup[i] for i in range(0,parameters.chain_length)]
 
-        """
-        compare_analytic_gf(green_function_up)
-        """
+        #if ( parameters.hubbard_interaction == 0):
+            #compare_analytic_gf(green_function_up)
+
         self_energy_left , self_energy_right = embedding_self_energy_retarded()
-        if( parameters.hubbard_interaction==0 ):
+        
+        if( parameters.hubbard_interaction == 0 ):
             current_landauer[i] = landauer_current(green_function_up, self_energy_left , self_energy_right , i ) 
-            print("The landauer current is " , current[i], "The left voltage is " , parameters.voltage_l[i] , "The right voltage is " , parameters.voltage_r[i])
+            print("The landauer current is " , current_landauer[i], "The left voltage is " , parameters.voltage_l[i] , "The right voltage is " , parameters.voltage_r[i])
         
         current[i] = current_Meir_wingreen( spectral_function_up , gf_int_lesser_up, self_energy_left , self_energy_right , i) 
         print("The Meir_wingreen current is " , current[i], "The left voltage is " , parameters.voltage_l[i] , "The right voltage is " , parameters.voltage_r[i])
         print(" ")
+        
     print(current, current_landauer)
     fig = plt.figure()
     plt.plot( voltage , current , color='blue' ) 

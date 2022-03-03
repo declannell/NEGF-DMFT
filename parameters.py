@@ -8,11 +8,11 @@ hopping = -1.0 #the hopping the x direction of the scattering region
 
 hopping_y = -1.0#the hopping the y direction of the scattering region
 
-hopping_lx = -4.0 #the hopping in the x direction of the left lead
+hopping_lx = -1.0 #the hopping in the x direction of the left lead
 
 hopping_ly = -1.0 #the hopping in the y direction of the left lead
 
-hopping_rx = -4.0 #the hopping in the x direction of the right lead
+hopping_rx = -1.0 #the hopping in the x direction of the right lead
 
 hopping_ry= -0.10 # the hopping in the y direction of the right lead
 
