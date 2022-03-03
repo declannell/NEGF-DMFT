@@ -1,4 +1,4 @@
-onsite = 1.0#onsite energy in the scattering region
+onsite = 0.0#onsite energy in the scattering region
 
 onsite_l = 0.0  #onsite energy in the left lead
 
@@ -28,14 +28,14 @@ chain_length_ly = 1 # this is the number of k points I will take in the leads in
 
 chemical_potential = 0.0
 
-temperature = 0.0
+temperature = 100
 
-steps = 201 #number of energy points we take
+steps = 187 #number of energy points we take
 
 e_upper_bound = 14.0 # this is the max energy value
 
 e_lower_bound = -14.0# this is the min energy value
-hubbard_interaction = 0.0 # this is the hubbard interaction
+hubbard_interaction = 0.3 # this is the hubbard interaction
 
 voltage_r = [-0.15 * i for i in range(41)]
 
@@ -45,6 +45,10 @@ voltage_step = 0 # voltage step of zero is equilibrium. This is an integer and h
 
 pi = 3.14159265359
 
+if (hubbard_interaction == 0.0):
+    interaction_order = 0 # this is the order the green function will be calculated too in terms of interaction strength. this can be equal to 0 , 1 or 2#
+else:
+    interaction_order = 2
 #this needs a tiny imaginary part for convergence in the calculation of the embedding self energy
 energy = [e_lower_bound+( e_upper_bound - e_lower_bound ) / steps * x +0.00000000001 * 1j for x in range(steps)]
 

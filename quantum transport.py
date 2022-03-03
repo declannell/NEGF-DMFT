@@ -69,7 +69,7 @@ def fermi_function( energy: complex ):
         else:
             return 0
     else:
-        return 1 / (1 + math.exp( ( energy - parameters.chemical_potential ) / parameters.temperature ))
+        return 1 / (1 + math.exp( ( energy.real - parameters.chemical_potential ) / parameters.temperature ))
 
 """
 #this code allows me to increase the numerical precision in the integrating function
@@ -261,17 +261,17 @@ def inner_dmft( gf_int_up: List[List[List[complex]]] , gf_int_down: List[List[Li
                                             
         while( difference > 0.0001 ):#this is solving the impurity problem self consistently which in principle should be correct
             local_spin_up , local_spin_down = get_spin_occupation( [ e[0][0] for e in gf_int_lesser_up ] ,  [ e[0][0] for e in gf_int_lesser_down ] )
-            #local_sigma_up = self_energy_calculator( g_local_up , g_local_down ,  gf_int_lesser_up , gf_int_lesser_down )
-            #local_sigma_down = self_energy_calculator( g_local_down , g_local_up , gf_int_lesser_down , gf_int_lesser_up )
+            local_sigma_up = self_energy_calculator( g_local_up , g_local_down ,  gf_int_lesser_up , gf_int_lesser_down )
+            local_sigma_down = self_energy_calculator( g_local_down , g_local_up , gf_int_lesser_down , gf_int_lesser_up )
             
             for r in range( 0 , parameters.steps ):
 
                  # to make first order u should remove the += and just have a = sign
-                 local_sigma_up[r][0][0] = parameters.hubbard_interaction * local_spin_down
-                 local_sigma_down[r][0][0] = parameters.hubbard_interaction * local_spin_up                
+                 #local_sigma_up[r][0][0] = parameters.hubbard_interaction * local_spin_down
+                 #local_sigma_down[r][0][0] = parameters.hubbard_interaction * local_spin_up                
                  # to make first order u should remove the += and just have a = sign
-                 #local_sigma_up[r][0][0] += parameters.hubbard_interaction * local_spin_down
-                 #local_sigma_down[r][0][0] += parameters.hubbard_interaction * local_spin_up
+                 local_sigma_up[r][0][0] += parameters.hubbard_interaction * local_spin_down
+                 local_sigma_down[r][0][0] += parameters.hubbard_interaction * local_spin_up
                  """#this is for when we want to get the anderson impurity self consistently
                  g_initial_up[r] = 1 / ( ( 1 / g_local_up[r][0][0]) + local_sigma_up[r][0][0] )# this is getting the new dynamical mean field
                  g_initial_down[r] = 1 / ( ( 1 / g_local_down[r][0][0]) + local_sigma_down[r][0][0] )
@@ -310,12 +310,10 @@ def gf_dmft(voltage: int): # this function gets the converged green function usi
     se_mb_up_lesser = [ create_matrix( parameters.chain_length ) for z in range( 0 , parameters.steps )] 
     se_mb_down_lesser = [ create_matrix( parameters.chain_length ) for z in range( 0 , parameters.steps )] #these are the same for spin up and spin down
     
-    spin_up_occup , spin_down_occup = [ 0.0 for x in range( 0 , parameters.chain_length )] , [ 0.0 for x in range( 0 , parameters.chain_length )]
-
     hamiltonian = HubbardHamiltonian() # this sets up the effective hamiltonian
 
     n = parameters.chain_length**2 * parameters.steps
-    differencelist = [0 for i in range(0,2*n)]
+    differencelist = [0 for i in range(0, 2 * n)]
     old_green_function = [ [ [ 1.0 + 1j for x in range( parameters.chain_length ) ] for y in range( parameters.chain_length ) ] for z in range( 0 , parameters.steps )] 
     difference = 100.0
     count = 0
@@ -367,6 +365,7 @@ def gf_dmft(voltage: int): # this function gets the converged green function usi
     print("The spin up occupaton probability is ", spin_up_occup)
     if(voltage == 0):#this compares the two methods in equilibrium
         compare_g_lesser(gf_int_lesser_up , gf_int_up)
+        print("happened once")
         
     return gf_int_up, gf_int_down, spectral_function_up, spectral_function_down, spin_up_occup, spin_down_occup , gf_int_lesser_up 
 
@@ -473,7 +472,7 @@ def analytic_current_Meir_wingreen(  voltage_step: int ):#this uses the analytic
 
     trace = [ 0 for r in range(parameters.steps ) ]
     for r in range(0 , parameters.steps ):
-        trace[r] = -(fermi_function(parameters.energy[r] + parameters.voltage_l[voltage_step] ) * coupling_left[r][0][0] - fermi_function(parameters.energy[r] + parameters.voltage_r[voltage_step] ) * coupling_right[r][0][0] ) * analytical_spectral[r] + 1j * ( coupling_left[r][0][0] - coupling_right[r][0][0]) * analytical_g_lesser[r]
+        trace[r] = -(fermi_function(parameters.energy[r] - parameters.voltage_l[voltage_step] ) * coupling_left[r][0][0] - fermi_function(parameters.energy[r] - parameters.voltage_r[voltage_step] ) * coupling_right[r][0][0] ) * analytical_spectral[r] + 1j * ( coupling_left[r][0][0] - coupling_right[r][0][0]) * analytical_g_lesser[r]
     
 
     
@@ -607,7 +606,7 @@ def current_voltage_graph():#this will create a current vs voltage graph for sev
     current_landauer = [ 0 for i in range(points)]
 
     voltage = [parameters.voltage_l[i] - parameters.voltage_r[i] for i in range(points) ]
-    for i in range(0 , points):#this for loop determines how many voltage biases we want ot consider.
+    for i in range(0 , 1):#this for loop determines how many voltage biases we want ot consider.
         print("The bias is ", parameters.voltage_l[i] - parameters.voltage_r[i])
         self_energy = leads_self_energy.SelfEnergy(1 , i)    
         #this recalculates the embedding self energy for each bias.
