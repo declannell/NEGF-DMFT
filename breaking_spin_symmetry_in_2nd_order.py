@@ -103,7 +103,7 @@ def integrate(  gf_1: List[complex], gf_2: List[complex], gf_3: List[complex], r
             # I say the green function is zero outside -14 and +14. This means I need the final green function in the integral to be within an energy of -14 
             #and 14. The index of 0 corresponds to -14. Hence we need i+J-r>0 but in order to be less an energy of 14 we need i+j-r<steps. These conditions enesure the enrgy of the gf3 greens function to be within (-14, 14)
             
-                result = (delta_energy / (2 * parameters.pi)) ** 2 * gf_1[i] * gf_2[j] * gf_3[ i+j-r ] +result
+                result = (delta_energy /(2 * parameters.pi)) ** 2 * gf_1[i] * gf_2[j] * gf_3[ i+j-r ] +result
             else:
                 result = result
             
@@ -178,8 +178,8 @@ def get_spin_occupation( gf_lesser_up: List[complex] , gf_lesser_down: List[comp
     for r in range( 0 , parameters.steps ):
         result_up = (delta_energy) * gf_lesser_up[r] + result_up
         result_down = (delta_energy) * gf_lesser_down[r] + result_down
-    x= -1j / (parameters.pi) * result_up 
-    y= -1j / (parameters.pi) * result_down     
+    x= -1j / (2 * parameters.pi) * result_up 
+    y= -1j / (2 * parameters.pi) * result_down     
     return x , y
 
 def gf_lesser_nq( gf: List[List[List[complex]]] ,  se_mb_lesser: List[List[List[complex]]] ): #this obtains the lesser green function. The se_mb_lesser is the second order lesser many body self energy.
@@ -242,10 +242,11 @@ def inner_dmft( gf_int_up: List[List[List[complex]]] , gf_int_down: List[List[Li
     self_energy_down_lesser = [create_matrix( parameters.chain_length ) for z in range( 0 , parameters.steps  ) ] 
 
     local_sigma_up , local_sigma_down = [ create_matrix(1) for i in range( parameters.steps )] , [create_matrix(1) for i in range(parameters.steps)]
-    spin_up_occup , spin_down_occup = [ 0.0 for x in range(0, parameters.chain_length )] , [ 0.0 for x in range(0, parameters.chain_length)]
+    spin_up_occup , spin_down_occup = [ 1.0 for x in range(0, parameters.chain_length )] , [ 0.0 for x in range(0, parameters.chain_length)]
     local_sigma_down = [ create_matrix(1) for i in range( parameters.steps )]
 
-    """ #this is for when we want to get the anderson impurity self consistently
+    """ 
+    #this is for when we want to get the anderson impurity self consistently
     hamiltonian = HubbardHamiltonian()
     g_initial = [ create_matrix( parameters.chain_length ) for z in range( 0 , parameters.steps ) ] 
     
@@ -308,13 +309,18 @@ def gf_dmft(voltage: int ): # this function gets the converged green function us
     gf_int_down = [ create_matrix( parameters.chain_length ) for z in range( 0 , parameters.steps ) ]
     spectral_function_up = [ create_matrix( parameters.chain_length ) for z in range( 0 , parameters.steps ) ] 
     spectral_function_down = [ create_matrix( parameters.chain_length ) for z in range( 0 , parameters.steps ) ]
-    spin_up_occup , spin_down_occup = [ 0.0 for x in range(0, parameters.chain_length)] , [ 0.0 for x in range(0, parameters.chain_length)]
+    spin_up_occup , spin_down_occup = [ 0.2 for x in range(0, parameters.chain_length)] , [ 0.5 for x in range(0, parameters.chain_length)]
 
     se_mb_up = [ create_matrix( parameters.chain_length ) for z in range( 0 , parameters.steps )] 
     se_mb_down = [ create_matrix( parameters.chain_length ) for z in range( 0 , parameters.steps )] 
     se_mb_up_lesser = [ create_matrix( parameters.chain_length ) for z in range( 0 , parameters.steps )] 
     se_mb_down_lesser = [ create_matrix( parameters.chain_length ) for z in range( 0 , parameters.steps )] #these are the same for spin up and spin down
     
+    for r in range(0 ,parameters.steps):
+        for i in range(0 , parameters.chain_length):
+            se_mb_up[r][i][i] = parameters.hubbard_interaction * spin_down_occup[i]
+            se_mb_down[r][i][i] = parameters.hubbard_interaction * spin_up_occup[i]
+    #print(se_mb_down)
     hamiltonian = HubbardHamiltonian() # this sets up the effective hamiltonian
 
     n = parameters.chain_length**2 * parameters.steps
@@ -344,7 +350,8 @@ def gf_dmft(voltage: int ): # this function gets the converged green function us
         
         if ( parameters.hubbard_interaction == 0):
             break
-        print( "In the ",  count, "first DMFT loop the spin occupation is " , spin_up_occup)
+        #print( "In the ",  count, "first DMFT loop the spin up occupation is " , spin_up_occup)
+        #print( "In the ",  count, "first DMFT loop the spin down occupation is " , spin_down_occup)
         for r in range( 0 , parameters.steps ):
                 for i in range( 0 , parameters.chain_length ):
                     for j in range( 0 , parameters.chain_length ): #this is due to the spin_up_occup being of length chain_length
@@ -374,9 +381,20 @@ def gf_dmft(voltage: int ): # this function gets the converged green function us
         plt.show()
     """
     print("The spin up occupaton probability is ", spin_up_occup)
+    print("The spin down occupaton probability is ", spin_down_occup)
     if(voltage == 0):#this compares the two methods in equilibrium
         compare_g_lesser(gf_int_lesser_up , gf_int_up)
-
+    """
+    fig = plt.figure()                
+    plt.plot(parameters.energy , [e[0][0] for e in spectral_function_up] , color = 'blue'  , label='spin up spectral')
+    #plt.plot(parameters.energy , [e[0][0].real for e in g_lesser_up] , color = 'orange'  , label='other real')
+    plt.plot(parameters.energy , [e[0][0] for e in spectral_function_down] , color = 'green'  , label='spin down spectral')
+    #plt.plot(parameters.energy , [e[0][0].real for e in lesser_g] , color = 'green'  , label='FD real')
+    plt.title(" spectral function")
+    plt.legend(loc='upper right')
+    plt.xlabel("energy")
+    plt.ylabel
+    """
     return gf_int_up, gf_int_down, spectral_function_up, spectral_function_down, spin_up_occup, spin_down_occup , gf_int_lesser_up 
 
 
@@ -541,14 +559,14 @@ def landauer_current( gf_r: List[List[List[complex]]] , left_se_r: List[List[Lis
             for j in range(0 , parameters.chain_length ):
                 for k in range(0 , parameters.chain_length ):
                     transmission[i][r]  = coupling_left[r][i][k] * gf_r[r][k][j] * coupling_right[r][j][j] * gf_a[r][j][i] 
-    """
+
     fig = plt.figure()
     plt.plot( parameters.energy , transmission[i]  , color='red'  ) 
     plt.title("Transmission")
     plt.xlabel("energy")
     plt.ylabel("Transmission probability")  
     plt.show()     
-    """
+
     
     
     
@@ -613,12 +631,12 @@ def embedding_self_energy_retarded():# this gets the embeddign self energy from 
     return self_energy_left , self_energy_right
 
 def current_voltage_graph():#this will create a current vs voltage graph for several potential biases. 
-    points = 10
+    points = 15
     current = [ 0 for i in range(points)]
     current_landauer = [ 0 for i in range(points)]
 
     voltage = [parameters.voltage_l[i] - parameters.voltage_r[i] for i in range(points) ]
-    for i in range(0 , 1):#this for loop determines how many voltage biases we want ot consider.
+    for i in range(0 , points):#this for loop determines how many voltage biases we want ot consider.
         print("The bias is ", parameters.voltage_l[i] - parameters.voltage_r[i])
         self_energy = leads_self_energy.SelfEnergy(1 , i)    
         #this recalculates the embedding self energy for each bias.
@@ -640,22 +658,36 @@ def current_voltage_graph():#this will create a current vs voltage graph for sev
         
     print(current, current_landauer)
     fig = plt.figure()
-    plt.plot( voltage , current , color='blue' ) 
-    plt.plot( voltage , current_landauer , color='red' )     
+    plt.plot( voltage , current , color='blue', label = "Meir Wingreen current" ) 
+    if(parameters.hubbard_interaction == 0.0):
+        plt.plot( voltage , current_landauer , color='red' , label = "Landauer Current" )     
     plt.title("Current vs Voltage")
-    #plt.legend(loc='upper right')
+    plt.legend(loc='upper right')
     plt.xlabel("Voltage")
     plt.ylabel("Current")  
     plt.show()
     
-    return green_function_up
+    return green_function_up, green_function_down
 
 
 def main():
     time_start = time.perf_counter()
     
-    green_function_up = current_voltage_graph()    
+    green_function_up, green_function_down = current_voltage_graph()    
     #this outputs the green function to a text file if needed.
+    for i in range(0, parameters.chain_length):
+
+        plt.plot( parameters.energy , [ e[i][i].real for e in green_function_up]  , color='red' , label='Real Green up' ) 
+        plt.plot( parameters.energy , [ e[i][i].imag for e in green_function_up], color='blue', label='Imaginary Green function')
+        plt.plot( parameters.energy , [ e[i][i].real for e in green_function_down]  , color='orange' , label='Real Green up' ) 
+        plt.plot( parameters.energy , [ e[i][i].imag for e in green_function_down], color='green', label='Imaginary Green function')
+
+    plt.title("Converged Green function")
+    plt.legend(loc='upper left')
+    plt.xlabel("energy")
+    plt.ylabel("Green Function")  
+    plt.show()     
+
     f = open(r"C:\Users\user\Desktop\Green function code\Green's Function\green_function_not_FD.txt", "w")
     for r in range(0, parameters.steps ):
 

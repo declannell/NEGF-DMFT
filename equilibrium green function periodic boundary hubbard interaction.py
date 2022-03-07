@@ -142,7 +142,7 @@ def get_spin_occupation(spectral_function, energy, parameters):
 
 def main():
     onsite, gamma, hopping_x , hopping_y , chemical_potential, temperature , hubbard_interaction = 1.0 , 2.0 , -1.0 ,-1.0 ,0.0, 0.0 , 0.3
-    chain_length_x,chain_length_y= 3, 1
+    chain_length_x,chain_length_y= 3, 3
     steps=81 #number of energy points
     e_upper_bound , e_lower_bound = 20.0 , -20.0
     k_y=[ 2*np.pi*m/chain_length_y for m in range(0,chain_length_y)]

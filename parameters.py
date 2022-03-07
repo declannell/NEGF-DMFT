@@ -1,18 +1,18 @@
-onsite = 0.0#onsite energy in the scattering region
+onsite = -1.0#onsite energy in the scattering region
 
 onsite_l = 0.0  #onsite energy in the left lead
 
 onsite_r = 0.0  #onsite energy in the right lead
     
-hopping = -1.0 #the hopping the x direction of the scattering region
+hopping = 0.0 #the hopping the x direction of the scattering region
 
 hopping_y = -1.0#the hopping the y direction of the scattering region
 
-hopping_lx = -1.0 #the hopping in the x direction of the left lead
+hopping_lx = -5.0 #the hopping in the x direction of the left lead
 
 hopping_ly = -1.0 #the hopping in the y direction of the left lead
 
-hopping_rx = -1.0 #the hopping in the x direction of the right lead
+hopping_rx = -5.0 #the hopping in the x direction of the right lead
 
 hopping_ry= -0.10 # the hopping in the y direction of the right lead
 
@@ -28,7 +28,7 @@ chain_length_ly = 1 # this is the number of k points I will take in the leads in
 
 chemical_potential = 0.0
 
-temperature = 100
+temperature = 0
 
 steps = 187 #number of energy points we take
 
@@ -48,7 +48,7 @@ pi = 3.14159265359
 if (hubbard_interaction == 0.0):
     interaction_order = 0 # this is the order the green function will be calculated too in terms of interaction strength. this can be equal to 0 , 1 or 2#
 else:
-    interaction_order = 2
+    interaction_order = 1
 #this needs a tiny imaginary part for convergence in the calculation of the embedding self energy
 energy = [e_lower_bound+( e_upper_bound - e_lower_bound ) / steps * x +0.00000000001 * 1j for x in range(steps)]
 
